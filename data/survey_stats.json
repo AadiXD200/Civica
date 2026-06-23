@@ -1,0 +1,180 @@
+{
+  "source": "Statistics Canada, Canadian Housing Survey (CHS) 2022, Public Use Microdata File",
+  "citation": "Statistics Canada. (2023). Canadian Housing Survey, 2022 [Public Use Microdata File]. Ottawa: Statistics Canada.",
+  "note": "All percentages are survey-weighted (PFWEIGHT) and represent Canadian households, not the raw sample. Core housing need (PCHN) and shelter-cost-to-income ratio groups (PSTIR_GR) are Statistics Canada derived variables. Tenure from PDCT_05 (dwelling owned by household member). Excludes households not examined for core housing need (band housing, collective dwellings).",
+  "national": {
+    "n_unweighted": 37102,
+    "core_housing_need_pct": 11.6,
+    "shelter_cost_30pct_plus_pct": 6.6,
+    "renter_pct": 34.6,
+    "median_household_income": 92500,
+    "social_housing_pct": 11.2,
+    "dwelling_issues_pct": 25.5,
+    "waitlist_social_housing_pct": 1.6
+  },
+  "by_region": {
+    "Atlantic": {
+      "n_unweighted": 10284,
+      "core_housing_need_pct": 10.0,
+      "shelter_cost_30pct_plus_pct": 3.8,
+      "renter_pct": 28.8,
+      "median_household_income": 80000,
+      "dwelling_issues_pct": 26.5
+    },
+    "Quebec": {
+      "n_unweighted": 5227,
+      "core_housing_need_pct": 5.5,
+      "shelter_cost_30pct_plus_pct": 3.2,
+      "renter_pct": 39.8,
+      "median_household_income": 80000,
+      "dwelling_issues_pct": 22.5
+    },
+    "Ontario": {
+      "n_unweighted": 7111,
+      "core_housing_need_pct": 14.7,
+      "shelter_cost_30pct_plus_pct": 9.4,
+      "renter_pct": 33.9,
+      "median_household_income": 97500,
+      "dwelling_issues_pct": 27.9
+    },
+    "Prairies": {
+      "n_unweighted": 10786,
+      "core_housing_need_pct": 11.0,
+      "shelter_cost_30pct_plus_pct": 5.1,
+      "renter_pct": 29.0,
+      "median_household_income": 105000,
+      "dwelling_issues_pct": 21.5
+    },
+    "British Columbia": {
+      "n_unweighted": 3694,
+      "core_housing_need_pct": 15.7,
+      "shelter_cost_30pct_plus_pct": 8.5,
+      "renter_pct": 36.7,
+      "median_household_income": 92500,
+      "dwelling_issues_pct": 28.6
+    }
+  },
+  "by_demographic": {
+    "by_age": {
+      "15-34": {
+        "n_unweighted": 2509,
+        "core_housing_need_pct": 10.1,
+        "shelter_cost_30pct_plus_pct": 11.8,
+        "renter_pct": 67.8,
+        "median_household_income": 85000
+      },
+      "35-54": {
+        "n_unweighted": 7624,
+        "core_housing_need_pct": 10.2,
+        "shelter_cost_30pct_plus_pct": 5.6,
+        "renter_pct": 40.4,
+        "median_household_income": 110000
+      },
+      "55-64": {
+        "n_unweighted": 12284,
+        "core_housing_need_pct": 10.7,
+        "shelter_cost_30pct_plus_pct": 6.1,
+        "renter_pct": 26.0,
+        "median_household_income": 110000
+      },
+      "65+": {
+        "n_unweighted": 14685,
+        "core_housing_need_pct": 14.5,
+        "shelter_cost_30pct_plus_pct": 6.6,
+        "renter_pct": 30.4,
+        "median_household_income": 62500
+      }
+    },
+    "immigrants": {
+      "n_unweighted": 5478,
+      "core_housing_need_pct": 14.6,
+      "shelter_cost_30pct_plus_pct": 9.2,
+      "renter_pct": 39.0,
+      "median_household_income": 100000
+    },
+    "non_immigrants": {
+      "n_unweighted": 20767,
+      "core_housing_need_pct": 10.2,
+      "shelter_cost_30pct_plus_pct": 5.6,
+      "renter_pct": 33.0,
+      "median_household_income": 90000
+    },
+    "visible_minority_households": {
+      "n_unweighted": 4423,
+      "core_housing_need_pct": 13.7,
+      "shelter_cost_30pct_plus_pct": 9.6,
+      "renter_pct": 40.3,
+      "median_household_income": 110000
+    },
+    "non_visible_minority_households": {
+      "n_unweighted": 22000,
+      "core_housing_need_pct": 10.9,
+      "shelter_cost_30pct_plus_pct": 5.8,
+      "renter_pct": 32.9,
+      "median_household_income": 87500
+    },
+    "renters": {
+      "n_unweighted": 20881,
+      "core_housing_need_pct": 22.3,
+      "shelter_cost_30pct_plus_pct": 10.7,
+      "renter_pct": 100.0,
+      "median_household_income": 62500
+    },
+    "owners": {
+      "n_unweighted": 15810,
+      "core_housing_need_pct": 5.9,
+      "shelter_cost_30pct_plus_pct": 4.5,
+      "renter_pct": 0.0,
+      "median_household_income": 115000
+    },
+    "no_employed_person": {
+      "n_unweighted": 15887,
+      "core_housing_need_pct": 21.7,
+      "shelter_cost_30pct_plus_pct": 10.1,
+      "renter_pct": 37.1,
+      "median_household_income": 49000
+    }
+  },
+  "by_income_quintile": {
+    "Q1 (lowest)": {
+      "n_unweighted": 7290,
+      "core_housing_need_pct": 61.2,
+      "shelter_cost_30pct_plus_pct": 31.5,
+      "renter_pct": 68.0,
+      "median_household_income": 23000,
+      "income_range": "$900\u2013$27,000"
+    },
+    "Q2": {
+      "n_unweighted": 6990,
+      "core_housing_need_pct": 34.1,
+      "shelter_cost_30pct_plus_pct": 16.9,
+      "renter_pct": 53.8,
+      "median_household_income": 39000,
+      "income_range": "$28,000\u2013$48,000"
+    },
+    "Q3": {
+      "n_unweighted": 7226,
+      "core_housing_need_pct": 9.8,
+      "shelter_cost_30pct_plus_pct": 6.3,
+      "renter_pct": 44.5,
+      "median_household_income": 62500,
+      "income_range": "$49,000\u2013$77,500"
+    },
+    "Q4": {
+      "n_unweighted": 7042,
+      "core_housing_need_pct": 0.8,
+      "shelter_cost_30pct_plus_pct": 1.6,
+      "renter_pct": 31.9,
+      "median_household_income": 100000,
+      "income_range": "$80,000\u2013$125,000"
+    },
+    "Q5 (highest)": {
+      "n_unweighted": 7079,
+      "core_housing_need_pct": 0.0,
+      "shelter_cost_30pct_plus_pct": 0.7,
+      "renter_pct": 14.7,
+      "median_household_income": 180000,
+      "income_range": "$130,000\u2013$975,000"
+    }
+  }
+}

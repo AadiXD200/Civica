@@ -1,0 +1,177 @@
+[
+  {
+    "id": "cmhc-rental-2024-vacancy",
+    "title": "CMHC Rental Market Report — Canada, Fall 2024",
+    "url": "https://www.cmhc-schl.gc.ca/professionals/housing-markets-data-and-research/market-reports/rental-market-reports",
+    "topics": ["housing", "affordability", "displacement", "equity"],
+    "snippet": "Canada's national average vacancy rate fell to 2.2% in 2024, the lowest since 2001. Toronto sits at 1.4%, Vancouver at 0.9%, and Calgary at 2.8%. In major centres, vacancy rates below 3% are associated with rapid rent escalation and increased eviction pressure on low-income renters."
+  },
+  {
+    "id": "cmhc-rental-2024-rent-growth",
+    "title": "CMHC Rental Market Report — Rent Growth, Fall 2024",
+    "url": "https://www.cmhc-schl.gc.ca/professionals/housing-markets-data-and-research/market-reports/rental-market-reports",
+    "topics": ["housing", "affordability"],
+    "snippet": "Average asking rents for vacant units in Canada rose 8.6% year-over-year in 2024. The gap between rents for vacant and occupied units (the 'rent gap') now exceeds 25% in Toronto and Vancouver, meaning tenants face sharp increases upon moving. This creates lock-in effects that reduce labour mobility."
+  },
+  {
+    "id": "cmhc-housing-starts-2024",
+    "title": "CMHC Housing Starts — Canada, 2024",
+    "url": "https://www.cmhc-schl.gc.ca/professionals/housing-markets-data-and-research/market-reports/housing-market-outlook",
+    "topics": ["housing", "infrastructure", "timeline"],
+    "snippet": "Canada recorded 240,267 housing starts in 2024, down 7% from 2023. To meet demand from population growth and immigration, Canada would need approximately 3.5 million additional units by 2030 (CMHC 2023 projection). Current construction capacity is estimated to support only 200,000–220,000 starts annually."
+  },
+  {
+    "id": "statscan-shelter-cost-ratio-2021",
+    "title": "Statistics Canada — Census 2021, Housing Suitability and Core Housing Need",
+    "url": "https://www150.statcan.gc.ca/n1/pub/46-28-0001/2022001/article/00001-eng.htm",
+    "topics": ["housing", "affordability", "equity"],
+    "snippet": "In 2021, 1 in 5 Canadian renters (20.9%) spent 30% or more of their income on shelter, meeting the definition of core housing need. Among recent immigrants (landed within 5 years), 33.7% were in core housing need. Among Indigenous people living off-reserve, 22.3% were in core housing need."
+  },
+  {
+    "id": "statscan-income-inequality-2022",
+    "title": "Statistics Canada — Canadian Income Survey, 2022",
+    "url": "https://www150.statcan.gc.ca/n1/daily-quotidien/240226/dq240226b-eng.htm",
+    "topics": ["equity", "affordability", "employment"],
+    "snippet": "In 2022, the median after-tax income for the bottom income quintile was $16,800, compared to $102,600 for the top quintile. Racialized Canadians had median after-tax incomes 13% below the non-racialized population. Recent immigrants (within 5 years) earned a median of $38,100 versus $55,900 for Canadian-born workers."
+  },
+  {
+    "id": "pbo-housing-affordability-2023",
+    "title": "Parliamentary Budget Officer — Canada's Housing Affordability Crisis, 2023",
+    "url": "https://www.pbo-dpb.ca/en/publications/RP-2324-007-S--canada-s-housing-affordability-crisis--crise-abordabilite-logement-canada",
+    "topics": ["housing", "affordability", "fiscal"],
+    "snippet": "The PBO estimates that housing has become unaffordable for average Canadians in all major cities. A household earning the median income in Toronto would need to spend 63% of pre-tax income to purchase an average home in 2023. In Vancouver, that figure is 84%. Renters face effective housing cost burdens of 35–55% in major centres."
+  },
+  {
+    "id": "statscan-labour-force-2024",
+    "title": "Statistics Canada — Labour Force Survey, 2024 Annual",
+    "url": "https://www150.statcan.gc.ca/n1/daily-quotidien/250207/dq250207a-eng.htm",
+    "topics": ["employment", "fiscal"],
+    "snippet": "Canada's unemployment rate averaged 6.4% in 2024, up from 5.4% in 2022. Youth unemployment (15–24) reached 14.2%. Construction sector employment grew 3.1% but faces a projected shortage of 81,000 workers by 2030 as the existing workforce ages out (BuildForce Canada 2024). Skilled trades vacancies rose 18% year-over-year."
+  },
+  {
+    "id": "buildforce-construction-shortage-2024",
+    "title": "BuildForce Canada — Construction and Maintenance Looking Forward, 2024",
+    "url": "https://buildforce.ca/en/reports",
+    "topics": ["timeline", "infrastructure", "employment"],
+    "snippet": "Canada's construction industry will need to hire and train 351,800 new workers by 2033 to replace retiring workers and meet new demand. Of this, only 227,200 are projected to enter the sector, leaving a net shortfall of 124,600 workers. Residential construction faces the most acute shortage, particularly for framers, electricians, and plumbers."
+  },
+  {
+    "id": "statscan-indigenous-housing-2021",
+    "title": "Statistics Canada — Housing Experiences in First Nations Communities, 2021 Census",
+    "url": "https://www150.statcan.gc.ca/n1/pub/41-20-0002/412000022022001-eng.htm",
+    "topics": ["equity", "geographic", "housing"],
+    "snippet": "In 2021, 19.4% of First Nations people living on reserve were in crowded housing (more than one person per room), compared to 2.2% of the non-Indigenous population. On-reserve vacancy rates are near zero in most communities, with a reported housing shortfall of 130,000 units. Housing starts on reserve averaged 2,100 per year from 2016–2021, far below the estimated need of 9,500 annually."
+  },
+  {
+    "id": "statscan-immigration-housing-2023",
+    "title": "Statistics Canada — Immigrants in the Canadian Housing Market, 2023",
+    "url": "https://www150.statcan.gc.ca/n1/pub/75-006-x/2023001/article/00010-eng.htm",
+    "topics": ["equity", "displacement", "housing", "geographic"],
+    "snippet": "Recent immigrants (arrived within 5 years) are nearly twice as likely to rent as Canadian-born residents (73% vs 37%). They are concentrated in high-cost cities: 62% of recent immigrants settle in Toronto, Vancouver, or Montreal. Recent immigrant households spend a median 35% of income on rent, versus 25% for Canadian-born renters."
+  },
+  {
+    "id": "bank-canada-financial-stability-2024",
+    "title": "Bank of Canada — Financial Stability Report, 2024",
+    "url": "https://www.bankofcanada.ca/2024/05/financial-stability-report-2024/",
+    "topics": ["fiscal", "housing", "affordability"],
+    "snippet": "As of 2024, 35% of Canadian mortgage holders are set to renew by end of 2026, with average payment increases projected at 20–40% upon renewal due to higher interest rates. Households with mortgages originated in 2020–2021 at near-zero rates face the largest payment shock. This creates elevated default risk concentrated in high-price markets like Toronto and Vancouver."
+  },
+  {
+    "id": "statscan-municipal-finance-2022",
+    "title": "Statistics Canada — Local Government Finance, 2022",
+    "url": "https://www150.statcan.gc.ca/n1/daily-quotidien/240516/dq240516b-eng.htm",
+    "topics": ["fiscal", "infrastructure"],
+    "snippet": "Canadian municipalities face an estimated $141 billion infrastructure deficit (Federation of Canadian Municipalities, 2023). Transit systems in major cities operate at 65–80% of pre-pandemic ridership while maintaining full infrastructure costs. Development charges — fees levied on new construction — now represent 15–25% of total construction costs in Ontario, directly raising new housing costs."
+  },
+  {
+    "id": "statscan-rental-purpose-built-2024",
+    "title": "Statistics Canada / CMHC — Purpose-Built Rental Supply, 2024",
+    "url": "https://www.cmhc-schl.gc.ca/professionals/housing-markets-data-and-research",
+    "topics": ["housing", "affordability", "timeline"],
+    "snippet": "Purpose-built rental construction reached a 50-year high in 2023 with 57,000 starts, but completions lag starts by 2–4 years. Condo investor rentals now represent 30–40% of the rental supply in Toronto and Vancouver — a structurally unstable supply source as investors can exit the rental market upon sale. Loss of condo rentals to owner-occupancy is estimated at 15,000–20,000 units per year nationally."
+  },
+  {
+    "id": "statscan-rural-northern-housing-2021",
+    "title": "Statistics Canada — Housing in Northern and Rural Canada, 2021 Census",
+    "url": "https://www150.statcan.gc.ca/n1/daily-quotidien/220921/dq220921b-eng.htm",
+    "topics": ["geographic", "housing", "equity"],
+    "snippet": "In northern communities (defined as north of 60° latitude and select remote areas), 28% of homes require major repairs, versus 7% nationally. Average construction costs in northern communities are 2–4x those in southern urban centres. Nunavut and NWT face vacancy rates below 0.5% with no functioning private rental market in most communities."
+  },
+  {
+    "id": "statscan-homelessness-2022",
+    "title": "Statistics Canada — Homelessness and Housing Instability, 2022",
+    "url": "https://www150.statcan.gc.ca/n1/pub/75-006-x/2023001/article/00003-eng.htm",
+    "topics": ["equity", "displacement", "housing"],
+    "snippet": "Canada's 2022 point-in-time count identified 30,000 people experiencing homelessness on any given night, a 20% increase from 2018. Chronic homelessness (6+ months) represents 40% of cases. Indigenous peoples are overrepresented: comprising 5% of the Canadian population but 30–40% of the homeless population. Youth (13–24) comprise 20% of people experiencing homelessness."
+  },
+  {
+    "id": "statscan-interprovincial-migration-2023",
+    "title": "Statistics Canada — Interprovincial Migration, 2023",
+    "url": "https://www150.statcan.gc.ca/n1/daily-quotidien/230922/dq230922b-eng.htm",
+    "topics": ["geographic", "employment", "displacement"],
+    "snippet": "In 2023, Ontario experienced a net loss of 25,000 residents to other provinces, the largest since 1997, driven primarily by housing affordability. Alberta gained 54,000 net migrants, largely from Ontario and BC. This migration is concentrated among 25–44 year olds — the prime working-age demographic. High-cost cities are experiencing 'labour market leakage' as workers relocate to more affordable provinces."
+  },
+  {
+    "id": "statscan-seniors-housing-2021",
+    "title": "Statistics Canada — Seniors Housing, 2021 Census",
+    "url": "https://www150.statcan.gc.ca/n1/pub/75-006-x/2022001/article/00007-eng.htm",
+    "topics": ["equity", "housing", "affordability"],
+    "snippet": "In 2021, 27.5% of Canadian seniors (65+) living alone spent 30%+ of income on shelter costs — more than double the rate for multi-person senior households (12.1%). Senior renters are particularly vulnerable: median income for renters over 65 is $24,400 versus $48,200 for senior homeowners. Canada's senior population is projected to reach 9.5 million by 2030, up from 7.0 million in 2021."
+  },
+  {
+    "id": "statscan-youth-housing-2023",
+    "title": "Statistics Canada — Young Adults and Housing, 2023",
+    "url": "https://www150.statcan.gc.ca/n1/pub/75-006-x/2023001/article/00009-eng.htm",
+    "topics": ["housing", "affordability", "equity"],
+    "snippet": "The homeownership rate among Canadians aged 25–34 fell from 44% in 2011 to 36% in 2021. Among 25–34 year olds in Toronto and Vancouver, homeownership rates are 22% and 24% respectively. Average time to save a 20% down payment on an average-priced home has risen from 7 years (2005) to 22 years (2023) in Toronto for a median-income earner."
+  },
+  {
+    "id": "statscan-gender-housing-2023",
+    "title": "Statistics Canada — Gender and Housing Outcomes, 2023",
+    "url": "https://www150.statcan.gc.ca/n1/pub/75-006-x/2023001/article/00011-eng.htm",
+    "topics": ["equity", "displacement", "housing"],
+    "snippet": "Women-led lone-parent families have a housing cost burden (shelter costs as % of income) of 38% on average, the highest of any family type. Single women over 65 have the highest housing cost burden among seniors at 31%. Women fleeing domestic violence are disproportionately represented in shelter use: approximately 44,000 women and children access women's shelters annually in Canada."
+  },
+  {
+    "id": "statscan-disability-housing-2022",
+    "title": "Statistics Canada — Disability and Housing, Canadian Survey on Disability 2022",
+    "url": "https://www150.statcan.gc.ca/n1/pub/71-607-x/71-607-x2019014-eng.htm",
+    "topics": ["equity", "housing", "infrastructure"],
+    "snippet": "6.2 million Canadians (17% of the population) have a disability. Among Canadians with severe or very severe disabilities, 38% live in housing they report as inadequate for their needs, and 29% spend more than 30% of income on shelter. Only 6% of Canada's rental stock meets accessibility standards for wheelchair users."
+  },
+  {
+    "id": "statscan-black-canadians-income-2023",
+    "title": "Statistics Canada — Black Canadians and Income, 2023",
+    "url": "https://www150.statcan.gc.ca/n1/pub/71-607-x/71-607-x2018004-eng.htm",
+    "topics": ["equity", "employment", "housing"],
+    "snippet": "Black Canadians earn median wages 15% below the Canadian average, controlling for education and experience (Statistics Canada, 2023). Black Canadians are more likely to report housing discrimination: 26% of Black renters reported discrimination when seeking housing in a 2022 survey. Black Canadians are overrepresented in high-density rental housing in suburban areas with limited transit access."
+  },
+  {
+    "id": "statscan-cma-population-growth-2023",
+    "title": "Statistics Canada — Population Growth in Census Metropolitan Areas, 2023",
+    "url": "https://www150.statcan.gc.ca/n1/daily-quotidien/240327/dq240327b-eng.htm",
+    "topics": ["geographic", "infrastructure", "housing"],
+    "snippet": "Canada's population grew by 1.27 million in 2023, the fastest pace since 1957. Toronto CMA grew by 198,000 (+2.5%), Vancouver by 72,000 (+2.2%), and Calgary by 87,000 (+5.3%). Small and mid-sized cities (Hamilton, London, Kitchener) are absorbing secondary migration pressure as residents are priced out of major centres. Rural and northern communities continue to see population decline or stagnation."
+  },
+  {
+    "id": "statscan-gig-economy-2024",
+    "title": "Statistics Canada — Gig Economy and Non-Standard Work, 2024",
+    "url": "https://www150.statcan.gc.ca/n1/pub/71-222-x/71-222-x2019002-eng.htm",
+    "topics": ["employment", "equity", "affordability"],
+    "snippet": "Approximately 1.3 million Canadians (6.7% of employed workers) work primarily in platform or gig-based employment. Gig workers earn a median hourly rate of $16.20 — below the median for salaried workers ($24.80) — and have no access to Employment Insurance or employer-provided benefits. Gig workers face higher rates of housing instability: 41% report difficulty covering rent or mortgage in any given month."
+  },
+  {
+    "id": "statscan-transit-commuting-2021",
+    "title": "Statistics Canada — Commuting and Transit Use, 2021 Census",
+    "url": "https://www150.statcan.gc.ca/n1/daily-quotidien/220727/dq220727a-eng.htm",
+    "topics": ["infrastructure", "geographic", "employment"],
+    "snippet": "Transit mode share fell from 20% (2016) to 14% (2021) across Canadian CMAs, with COVID-19 accelerating car dependency. In Toronto, only 25% of jobs are accessible by transit within 45 minutes for most residents. New housing built far from transit (as is typical of suburban greenfield development) increases car dependency and reduces effective affordability: households in car-dependent areas spend $12,000–$18,000 more annually on transportation."
+  },
+  {
+    "id": "statscan-evictions-ontario-2023",
+    "title": "Landlord and Tenant Board — Ontario Eviction Filings, 2023",
+    "url": "https://tribunalsontario.ca/ltb/",
+    "topics": ["displacement", "housing", "equity"],
+    "snippet": "The Ontario Landlord and Tenant Board received 89,000 eviction applications in 2023, a 40% increase from 2019. Non-payment of rent (Form N4) accounted for 68% of filings. Backlogs at the LTB mean hearings are scheduled 8–14 months out, creating prolonged uncertainty for tenants. Low-income renters (income below $30,000) represent 58% of respondents in eviction proceedings."
+  }
+]

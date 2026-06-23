@@ -26,7 +26,8 @@ if __name__ == "__main__":
             for label, policy, results in [("A", policy_a, results_a), ("B", policy_b, results_b)]:
                 report = results.get("risk_report", {})
                 print(f"\nPolicy {label}: {policy}")
-                print(f"  Confidence: {results.get('confidence', {}).get('score', '?')}/10")
+                conf = results.get('confidence', {})
+                print(f"  Confidence: {conf.get('score', '?')}/{conf.get('out_of', '?')}")
                 print(f"  Overall risk level: {report.get('overall_risk_level', 'UNKNOWN')}")
                 print(f"  Key insight: {report.get('key_insight', 'N/A')}")
                 top_risks = report.get("risks", [])[:3]

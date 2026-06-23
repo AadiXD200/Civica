@@ -20,6 +20,9 @@
   --signal-negative: #ff2a00; /* Emergency red */
   --signal-mixed: #ffaa00;    /* Warning amber */
   
+  /* Accent */
+  --accent-blue: #4a9eff;
+
   /* Fonts */
   --font-display: 'Oswald', 'Impact', sans-serif;
   --font-mono: 'JetBrains Mono', 'Courier New', monospace;

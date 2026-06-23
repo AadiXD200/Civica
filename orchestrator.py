@@ -11,7 +11,8 @@ from data_pipeline import load_city_profiles
 from policy_classifier import classify_policy
 from confidence_scorer import calculate_confidence
 from forward_validator import seal_simulation
-from specialist_calibrator import calibrate_specialist_prompt
+from specialist_calibrator import calibrate_specialist_prompt, get_specialist_relevance
+from benefits_analyzer import run_benefits_analysis, aggregate_benefits
 from persona_calibrator import format_persona_for_prompt, build_cohort_summary
 from sector_inference import infer_sector_profile, format_sector_for_persona_prompt
 from tension_detector import run_tension_detection
@@ -242,9 +243,17 @@ Real city data from Statistics Canada:
 
 {historical_block}
 
-Analyze this policy ONLY through your domain expertise. Identify 2-4 specific risks that this policy CREATES or WORSENS. Do NOT flag pre-existing problems the policy fails to solve — only flag things that get WORSE because of this policy.
+Before identifying any risks, do two things:
+1. State the policy's DIRECT MECHANISM in one sentence — what specific action does this policy require, prohibit, or create?
+2. Identify any BUILT-IN MITIGATION — does the policy contain a rebate, exemption, transition fund, phase-in, or offset that directly limits the harm you are about to flag? If yes, factor it into your severity score. A rebate that returns 90% of revenue changes the net impact. A 5-year new construction exemption changes who bears the cost. An income cap changes who can access the benefit. These are not footnotes — they are part of the mechanism.
 
-For each risk, ground it in the real city data above. Reference specific numbers. Explain the economic mechanism — the causal chain from policy action to negative outcome. Where possible, cite the reference documents and historical precedents provided above.
+Only identify risks that are CAUSED or MATERIALLY WORSENED by this policy's specific mechanism — not pre-existing problems, not trends the policy touches on thematically, not second-order speculation more than 2 causal steps from the policy action. If the policy's own mitigation fully addresses a risk, do not flag it. If the mitigation is structurally insufficient (wrong scale, wrong group, wrong timing), flag the residual risk and explain why the mitigation falls short.
+
+For TAX policies: always reason about TAX INCIDENCE before flagging a risk. Who legally pays the tax is not always who economically bears it. A tax on undeveloped land falls on landholders who don't build — not on buyers of future homes. A tax on short-term sales falls on investors who flip — not on renters. If you cannot trace a direct line from who pays the tax to who is harmed, do not flag it as a risk.
+
+For time-limited policies (benefits, emergency programs, phase-ins): explicitly assess the CLIFF EFFECT — what happens when this policy ends or phases out? Abrupt withdrawal of income support, housing assistance, or market interventions often produces risks that are larger than the ongoing policy itself. If a cliff effect exists, flag it as a distinct risk with timeline "escalating".
+
+Identify 2-4 specific risks that this policy CREATES or WORSENS. For each risk, ground it in the real city data above. Reference specific numbers. Explain the economic mechanism — the causal chain from the policy's specific action to the negative outcome. Where possible, cite the reference documents and historical precedents provided above.
 
 If historical precedent data is available above, include a "historical_precedent" field on the risk — one sentence referencing what happened in the comparable policy case. This is the most important credibility signal in the output.
 
@@ -273,6 +282,15 @@ Only use severity 3 if you would be comfortable defending it with specific popul
 
     # Inject policy-specific focus directive (zero-cost, deterministic)
     prompt = calibrate_specialist_prompt(base_prompt, specialist, policy_classification, cities_summary)
+
+    # For low-relevance specialists, add a hard scope constraint
+    relevance = get_specialist_relevance(specialist, policy_classification)
+    if relevance <= 0.3:
+        prompt += (
+            "\n\nNOTE: Your domain has limited direct relevance to this policy type. "
+            "Only flag a risk if you can draw a direct causal line from this policy's specific mechanism to your domain. "
+            "If no such risk exists, return an empty risks array. Do not force a connection."
+        )
 
     fallback = {
         "specialist": specialist["id"],
@@ -422,7 +440,9 @@ severity_for_me:
   2 = significant impact — this would meaningfully affect my finances, housing, or employment
   3 = severe — this would cause serious hardship: housing instability, inability to afford essentials, or job loss
 Be honest about your situation. Most policies affect most people at 0 or 1. Only use 3 if this risk would genuinely destabilize your life given your income and city data.
-missed_risk: ONLY flag a risk that ALL of these are true: (1) it is NOT already covered by the specialist risks above, (2) it specifically affects YOUR demographic profile — not a generic concern any Canadian would have, (3) you can explain WHY your age, tenure, income, employment type, or immigration status makes you uniquely exposed. If you cannot meet all three criteria, return null. Most agents should return null."""
+missed_risk: ONLY flag a risk that ALL of these are true: (1) it is NOT already covered by the specialist risks above, (2) it flows directly from THIS POLICY'S SPECIFIC MECHANISM — not a general life concern or background trend that exists regardless of this policy, (3) it specifically affects YOUR demographic profile — not a generic concern any Canadian would have, (4) you can explain WHY your age, tenure, income, employment type, or immigration status makes you uniquely exposed to this policy's action. If you cannot meet all four criteria, return null. Most agents should return null.
+
+EXAMPLES OF WHAT TO REJECT: housing affordability concern in response to a pay equity policy (pre-existing, not caused by this policy); mental health concern in response to any policy (too generic); "I might lose my job" without a direct causal link to the specific policy mechanism."""
 
     fallback = {
         "agent_id": agent["id"],
@@ -558,13 +578,13 @@ TASK: In a single response, do BOTH of the following:
 2. VALIDATION: As this person, assess which specialist risks actually affect them, given their real city data and circumstances.
 
 For the validation — does each risk ACTUALLY AFFECT someone with this specific profile and city data?
-For missed_risk — only flag a risk if: (1) NOT already covered above, (2) specifically affects THIS demographic profile, (3) you can explain WHY their age/tenure/income/employment/immigration makes them uniquely exposed.
+For missed_risk — only flag a risk if: (1) NOT already covered above, (2) flows directly from THIS POLICY'S SPECIFIC MECHANISM — not a general life concern that exists regardless of this policy, (3) specifically affects THIS demographic profile, (4) you can explain WHY their age/tenure/income/employment/immigration makes them uniquely exposed to this policy's action. Housing affordability and mental health concerns are almost never valid missed_risks for non-housing policies — reject them unless there is a direct, named causal chain from this exact policy to that outcome.
 
 Return only valid JSON:
 {{
     "persona": {{
         "financial_fragility": "low|medium|high",
-        "policy_stance": "supportive|skeptical_of_benefit|indifferent|opposed",
+        "policy_stance": "supportive (net positive for me) | skeptical_of_benefit (sounds good but won't help me) | indifferent (doesn't affect me either way) | opposed (actively harms me)",
         "top_concerns": ["concern 1", "concern 2"],
         "lived_experience_note": "1-2 sentence narrative grounding this agent's perspective in the real data above"
     }},
@@ -876,9 +896,78 @@ async def run_deliberative_pass(client, asst_id, agents, policy_text, validation
     return [r for r in results if r is not None and not isinstance(r, Exception)]
 
 
+# --- Python-computed severity (overrides LLM verdicts) ---
+
+def compute_severity_labels(risk_validations: list, validator_results: list, benefits_data: dict | None) -> dict:
+    """
+    Computes overall_risk_level and per-risk severity entirely in Python.
+    These values are passed to the coordinator as hard constraints — the LLM
+    writes reasoning and titles but cannot change the numbers.
+
+    Per-risk severity rules (in priority order):
+      HIGH   — raw_confirmed >= 30 AND avg_severity_confirmed >= 2.0
+             OR raw_confirmed >= 40 (regardless of severity — broad consensus)
+      LOW    — raw_confirmed < 10
+      MEDIUM — everything else
+
+    Overall risk level:
+      Take the top 3 risks by (raw_confirmed / total) × avg_severity_confirmed.
+      Average those 3 scores.
+      HIGH   >= 0.45
+      LOW    <  0.15
+      MEDIUM — everything else
+
+    Net-impact adjustment:
+      If benefits_data shows net_positive_validators > 35/50 AND overall would be HIGH,
+      cap at MEDIUM — a policy where 70%+ validators are net positive is not HIGH risk.
+    """
+    total = len(validator_results)
+
+    per_risk = []
+    scores = []
+    for rv in risk_validations:
+        raw = rv["validators_confirmed"]
+        avg_sev = rv["avg_severity_confirmed"]
+
+        if raw >= 40 or (raw >= 30 and avg_sev >= 2.0):
+            sev = "HIGH"
+        elif raw < 10:
+            sev = "LOW"
+        else:
+            sev = "MEDIUM"
+
+        score = (raw / max(total, 1)) * avg_sev
+        per_risk.append(sev)
+        scores.append(score)
+
+    # Overall: average of top 3 scores
+    top3 = sorted(scores, reverse=True)[:3]
+    avg_top3 = sum(top3) / max(len(top3), 1)
+
+    if avg_top3 >= 0.45:
+        overall = "HIGH"
+    elif avg_top3 < 0.15:
+        overall = "LOW"
+    else:
+        overall = "MEDIUM"
+
+    # Net-impact cap: if majority validators are net positive, floor overall at MEDIUM
+    if benefits_data:
+        net_pos = benefits_data.get("summary", {}).get("net_positive_validators", 0)
+        if net_pos > 30 and overall == "HIGH":
+            overall = "MEDIUM"
+
+    return {
+        "overall_risk_level": overall,
+        "per_risk_severity": per_risk,
+        "scores": [round(s, 3) for s in scores],
+        "avg_top3_score": round(avg_top3, 3),
+    }
+
+
 # --- Coordinator: Risk synthesis ---
 
-def build_coordinator_prompt(policy_text, specialist_results, validator_results, specialist_risks, tension_text=""):
+def build_coordinator_prompt(policy_text, specialist_results, validator_results, specialist_risks, tension_text="", benefits_data=None, computed_severity=None):
     """Build coordinator prompt from specialist findings + demographic validation."""
 
     # Total population weight (dynamic agents are boosted-sampled so normalise)
@@ -932,6 +1021,8 @@ def build_coordinator_prompt(policy_text, specialist_results, validator_results,
             "avg_severity_confirmed": round(sum(severities) / max(len(severities), 1), 1),
             "weighted_avg_severity": round(weighted_severity_sum / max(weighted_confirmed, 0.001), 2),
             "confirmed_demographics": confirmed_by[:10],
+            # Python-computed severity — injected after risk_validations list is built
+            "computed_severity": None,
         })
 
     # Collect missed risks from validators
@@ -945,11 +1036,64 @@ def build_coordinator_prompt(policy_text, specialist_results, validator_results,
                 **v["missed_risk"],
             })
 
+    # Deduplicate risk_validations: if multiple risks share the same category AND
+    # both have >= 20 confirmations, keep only the highest-confirmed one per category.
+    # This prevents the coordinator from seeing 3 "affordability" risks and merging
+    # them poorly — we pre-merge by keeping the best signal per category.
+    seen_categories: dict[str, dict] = {}
+    deduped = []
+    for rv in risk_validations:
+        cat = rv.get("category", "none")
+        conf = rv["validators_confirmed"]
+        if cat == "none" or conf < 20:
+            # Low-confidence risks or uncategorised: keep as-is
+            deduped.append(rv)
+        elif cat not in seen_categories:
+            seen_categories[cat] = rv
+            deduped.append(rv)
+        else:
+            # Keep the higher-confirmed one; merge cities and mechanism into it
+            existing = seen_categories[cat]
+            if conf > existing["validators_confirmed"]:
+                # New one is stronger — replace
+                existing_idx = deduped.index(existing)
+                rv["cities_most_affected"] = list(set(
+                    rv.get("cities_most_affected", []) +
+                    existing.get("cities_most_affected", [])
+                ))[:5]
+                deduped[existing_idx] = rv
+                seen_categories[cat] = rv
+            else:
+                # Existing is stronger — merge cities into it
+                existing["cities_most_affected"] = list(set(
+                    existing.get("cities_most_affected", []) +
+                    rv.get("cities_most_affected", [])
+                ))[:5]
+
+    risk_validations = deduped
+
+    # Cap at top 8 by confirmation count
+    risk_validations.sort(key=lambda x: x["validators_confirmed"], reverse=True)
+    risk_validations = risk_validations[:8]
+
+    # Inject computed severities into risk_validations
+    if computed_severity:
+        for i, rv in enumerate(risk_validations):
+            if i < len(computed_severity["per_risk_severity"]):
+                rv["computed_severity"] = computed_severity["per_risk_severity"][i]
+            else:
+                rv["computed_severity"] = "MEDIUM"
+        computed_overall = computed_severity["overall_risk_level"]
+    else:
+        computed_overall = "MEDIUM"
+
     return f"""You are a senior policy risk analyst producing the final risk report for a Canadian policy.
 
 Policy: {policy_text}
 
 PROCESS: 8 domain specialists identified risks. Then 50 demographic personas validated each risk against their real city data. Below are the results.
+
+SEVERITY IS PRE-COMPUTED: Each risk below has a "computed_severity" field calculated in Python from raw validator counts and average confirmed severity. You MUST use these exact values in your output — do not recalculate or override them. The overall_risk_level is also pre-computed: {computed_overall}. Use it exactly.
 
 Specialist risks with demographic validation:
 {json.dumps(risk_validations, indent=2)}
@@ -960,14 +1104,40 @@ Additional risks flagged by demographic validators (missed by specialists):
 Cross-demographic disagreement analysis (tenure, income, geography, age, immigration fault lines):
 {tension_text if tension_text else "No tension analysis available."}
 
-Produce the final risk report. Where cross-demographic tensions are noted above, reflect them in your reasoning chain — a risk confirmed heavily by renters but not owners, or by low-income but not high-income households, should be flagged as a distributional fault line in the affected_groups field. Rank risks by:
+Benefits identified by domain specialists (who gains from this policy):
+{json.dumps([{"benefit": b["benefit"], "magnitude": b["magnitude"], "primary_beneficiaries": b["primary_beneficiaries"], "caveat": b.get("caveat")} for b in (benefits_data.get("benefit_items", []) if benefits_data else [])], indent=2) if benefits_data and benefits_data.get("benefit_items") else "No benefits analysis available."}
+
+Net impact summary across 50 validators (positive = net gain, negative = net loss):
+{json.dumps({"by_tenure": benefits_data.get("net_by_tenure", {}), "by_income": benefits_data.get("net_by_income", {}), "net_positive_validators": benefits_data.get("summary", {}).get("net_positive_validators", 0), "net_negative_validators": benefits_data.get("summary", {}).get("net_negative_validators", 0)}, indent=2) if benefits_data else "Not available."}
+
+Before producing the report, apply this MECHANISM FILTER to every risk in the input:
+1. Write one sentence: "This policy [specific action] which causes [direct effect] which harms [group]."
+2. Count the causal steps between the policy action and the harm. If there are more than 2 steps, reject the risk.
+3. Ask: would this risk exist even if this policy were never passed? If yes, reject it.
+4. For non-housing policies (healthcare, labour, benefits, regulation): any risk rooted in housing affordability or rental prices requires a DIRECT mechanism from this policy — not "disposable income changes affect rent" or "workers relocate to cities" — those are too indirect. Reject them.
+
+After filtering, produce the final risk report. Include 3–5 distinct risks. Before writing the report, group all input risks by their ROOT CAUSAL MECHANISM:
+
+Step 1: Write one sentence for each risk starting with "Because this policy [action], it causes [first-order effect]."
+Step 2: If two risks have the same [action] → [first-order effect], they are the SAME risk. Merge them into one entry, listing all downstream effects in the reasoning.
+
+Common merge patterns:
+- "compliance costs burden SMEs" + "compliance costs reduce hiring" + "compliance costs slow AI adoption" → ONE risk: "Compliance cost burden on SMEs"
+- "supply reduction → higher rents" + "supply reduction → displacement" + "supply reduction → affordability pressure" → ONE risk: "Reduced housing supply drives affordability pressure"
+- Any two risks where the first causal step is identical → merge them
+
+You should end up with 3–5 genuinely distinct first-order mechanisms. If you have more than 5, you have not merged enough. Where cross-demographic tensions are noted above, reflect them in your reasoning chain. Rank risks by:
 1. Validation breadth — how many diverse demographic groups confirmed the risk
 2. Average severity among those who confirmed it
 3. Whether the risk was confirmed across multiple cities and tenure types (renters AND owners)
 
-CRITICAL: Only include risks the policy CREATES or WORSENS, not pre-existing problems.
+CRITICAL: Only include risks the policy CREATES or WORSENS, not pre-existing problems. Do not include a risk just because it appeared in specialist output — it must have meaningful validator confirmation (at least 10 validators confirming it). Hard rule: any risk with fewer than 10 confirmations is excluded unless it comes from a structurally underrepresented group (e.g. Indigenous reserve communities with only 2-3 validators where the low count reflects panel limits, not low real-world impact).
 
-For each risk, provide a REASONING CHAIN: (1) what economic mechanism this policy triggers, (2) specific data points that support it, (3) which demographics confirmed it and why they're vulnerable, (4) confidence level based on validation breadth.
+For validator-raised missed_risks: apply the same mechanism test — does this risk flow directly from what this policy specifically does? Reject it if you cannot name the specific causal chain.
+
+MITIGATION ACCOUNTING: Before scoring each risk's severity, ask — does the policy itself contain a mechanism that offsets or limits this harm? A rebate, exemption, transition fund, or phase-in period that directly addresses the risk should reduce its severity by one level. Name the mitigation and explain why it is or isn't sufficient. A mitigation that exists on paper but is structurally inadequate (wrong scale, wrong target group, wrong timing) does not reduce severity.
+
+For each risk, provide a REASONING CHAIN: (1) what economic mechanism this policy triggers, (2) what built-in mitigation exists and whether it's sufficient, (3) specific data points that support the residual risk, (4) which demographics confirmed it and why they're vulnerable, (5) confidence level based on validation breadth.
 
 TIMELINE: For each risk, assess when it manifests. Use these categories:
 - "immediate" — within 0–6 months of implementation (e.g. benefit starts flowing, landlords react to new rules)
@@ -979,16 +1149,12 @@ If a risk evolves across multiple horizons (e.g. mild at first, worsens over tim
 CASCADE CHAINS: For the top 3 risks, identify whether they form a causal chain — where risk A materializes first and makes risk B more likely or more severe. If a chain exists, score its likelihood: LOW (risks are independent), MEDIUM (plausible mechanism but uncertain), HIGH (documented in comparable policy — reference the historical precedent). Do NOT describe cascades as just "it compounds things" — name the specific mechanism.
 
 BLIND SPOTS: Report as a structured object, not a sentence. Cover:
-1. Which demographic groups are structurally underrepresented in the validator panel and why (e.g., on-reserve Indigenous households — StatsCan microdata does not cover reserves)
-2. Which policy effects cannot be modeled (behavioral responses, political implementation quality, landlord strategy)
+1. Which demographic groups are structurally underrepresented in the validator panel and why (e.g., on-reserve Indigenous households — StatsCan microdata does not cover reserves). NOTE: the validator panel skews toward low-to-medium income renters. For policies with tax deduction or savings incentives, high-income earners who benefit most are underrepresented — flag this if relevant.
+2. Which policy effects cannot be modeled (behavioral responses, political implementation quality, landlord strategy, uptake rates by income group). For housing supply policies, explicitly flag: community opposition and NIMBYism (documented to delay or block projects), municipal political will variability, and construction cost inflation under rapid build timelines.
 3. What real-world data would most improve confidence if available
+4. Whether the panel's income/tenure skew may have caused it to OVERSTATE risks that fall on renters and low-income households, or MISS benefits and risks that fall on owners and high-income households
 
-OVERALL RISK LEVEL — use this exact formula, do not deviate:
-- Each risk has a "population_weighted_confirmation_rate" field (0.0–1.0). Use this instead of raw validators_confirmed / validators_total.
-- Compute a weighted score for each risk: (original_severity / 3) × population_weighted_confirmation_rate
-- Take the TOP 3 weighted scores and average them
-- Map to: score >= 0.40 → HIGH, score >= 0.20 → MEDIUM, score < 0.20 → LOW
-- A specialist identifying a risk means nothing on its own. If validators did not confirm it, it does not drive the overall level up.
+OVERALL RISK LEVEL — already computed as {computed_overall}. Use this exact value in your output. Do not recalculate.
 
 Return exactly this JSON:
 {{
@@ -996,7 +1162,7 @@ Return exactly this JSON:
         {{
             "rank": 1,
             "title": "short risk title",
-            "severity": "HIGH|MEDIUM|LOW",
+            "severity": "copy exactly from computed_severity field above — do not change",
             "reasoning": "3-5 sentence reasoning chain grounded in specialist analysis and demographic validation",
             "affected_groups": "who bears this risk",
             "confirmed_by": 0,
@@ -1016,15 +1182,36 @@ Return exactly this JSON:
         "underrepresented_groups": "which demographic groups are structurally missing from the validator panel and why",
         "unmodeled_effects": "which real-world dynamics this simulation cannot capture",
         "data_gaps": "what real data would most improve confidence in these findings",
-        "coverage_note": "explain that rural/remote validators represent {rural_validator_count}/50 validators by count but only ~4% of population weight in the panel — StatsCan CHS 2022 microdata does not cover on-reserve First Nations households, so reserve community perspectives are approximated only"
+        "coverage_note": "Rural/remote validators represent {rural_validator_count}/50 validators by count but only ~4% of population weight in the panel. StatsCan CHS 2022 microdata does not cover on-reserve First Nations households — reserve community perspectives are approximated only.",
+        "panel_skew_warning": "If this policy has tax deductions, savings incentives, or benefits that accrue primarily to high-income earners or homeowners, note that the validator panel skews toward low-to-medium income renters (35/50 renters, majority low-medium income) — the simulation may overstate risks to renters and miss risks or benefits specific to high-income or ownership groups. Otherwise return null."
     }},
-    "overall_risk_level": "HIGH|MEDIUM|LOW",
-    "key_insight": "one sentence — the single most important non-obvious finding"
+    "overall_risk_level": "{computed_overall}",
+    "key_insight": "one sentence — the single most important non-obvious finding that a policy analyst would not already expect. Must name a specific mechanism, group, threshold, or distributional effect. If the policy is primarily beneficial (supply creation, income support, access improvement), the insight should name WHO benefits most and WHY — not just catalogue risks. Generic statements are not acceptable."
 }}"""
 
 
-async def run_coordinator(client, asst_id, policy_text, specialist_results, validator_results, specialist_risks, tension_text=""):
-    prompt = build_coordinator_prompt(policy_text, specialist_results, validator_results, specialist_risks, tension_text)
+async def run_coordinator(client, asst_id, policy_text, specialist_results, validator_results, specialist_risks, tension_text="", benefits_data=None):
+    # Compute severity in Python first — these are hard constraints passed to the LLM
+    total_pop_weight = sum(v.get("population_weight", 1.0) for v in validator_results) or 1.0
+    risk_validations_for_scoring = []
+    for i, risk in enumerate(specialist_risks):
+        confirmed = 0
+        sevs = []
+        for v in validator_results:
+            for val in v.get("validations", []):
+                if val.get("risk_index") == i + 1 and val.get("applies"):
+                    confirmed += 1
+                    sevs.append(val.get("severity_for_me", 0))
+        risk_validations_for_scoring.append({
+            "validators_confirmed": confirmed,
+            "avg_severity_confirmed": sum(sevs) / max(len(sevs), 1) if sevs else 0.0,
+        })
+    computed_severity = compute_severity_labels(risk_validations_for_scoring, validator_results, benefits_data)
+    log(f"  Python-computed overall: {computed_severity['overall_risk_level']} (avg_top3={computed_severity['avg_top3_score']})")
+    for i, (sev, score) in enumerate(zip(computed_severity['per_risk_severity'], computed_severity['scores'])):
+        log(f"    Risk {i+1}: {sev} (score={score})")
+
+    prompt = build_coordinator_prompt(policy_text, specialist_results, validator_results, specialist_risks, tension_text, benefits_data, computed_severity)
     try:
         thread = await client.create_thread(asst_id)
         response = await client.add_message(
@@ -1035,7 +1222,38 @@ async def run_coordinator(client, asst_id, policy_text, specialist_results, vali
             stream=False,
         )
         raw = response.content.strip().replace("```json", "").replace("```", "").strip()
-        return json.loads(raw)
+        result = json.loads(raw)
+
+        # Hard-enforce Python-computed values — LLM cannot override these
+        result["overall_risk_level"] = computed_severity["overall_risk_level"]
+
+        # Build a lookup: confirmed_by count → Python severity
+        # The coordinator reorders risks, so we match by confirmed_by count
+        # Build from the scoring data used to compute severity
+        conf_to_sev = {}
+        for j, rv in enumerate(risk_validations_for_scoring):
+            if j < len(computed_severity["per_risk_severity"]):
+                conf_to_sev[rv["validators_confirmed"]] = computed_severity["per_risk_severity"][j]
+
+        for i, risk in enumerate(result.get("risks", [])):
+            conf = risk.get("confirmed_by", 0)
+            # Try exact match first, then nearest, then positional
+            if conf in conf_to_sev:
+                risk["severity"] = conf_to_sev[conf]
+            else:
+                # Find closest confirmation count in scoring data
+                nearest = min(conf_to_sev.keys(), key=lambda x: abs(x - conf), default=None)
+                if nearest is not None:
+                    risk["severity"] = conf_to_sev[nearest]
+                elif i < len(computed_severity["per_risk_severity"]):
+                    risk["severity"] = computed_severity["per_risk_severity"][i]
+
+        # Fallback for blank key_insight
+        if not result.get("key_insight"):
+            top = result.get("risks", [{}])[0]
+            result["key_insight"] = f"The highest-confirmed risk is {top.get('title','unknown')} ({top.get('confirmed_by',0)}/{len(validator_results)} validators confirmed it)."
+
+        return result
     except Exception as e:
         log(f"  [WARN] Coordinator failed: {e}")
         return {
@@ -1076,10 +1294,11 @@ async def run_simulation(policy_text, event_queue=None):
     await emit({"type": "status", "message": "Classifying policy..."})
     cities_summary = build_all_cities_summary()
 
+    async def _create_specialist_threads():
+        return await asyncio.gather(*[client.create_thread(asst_id) for _ in SPECIALISTS])
+
     classify_task = asyncio.create_task(classify_policy(client, asst_id, policy_text))
-    specialist_threads_task = asyncio.create_task(
-        asyncio.gather(*[client.create_thread(asst_id) for _ in SPECIALISTS])
-    )
+    specialist_threads_task = asyncio.create_task(_create_specialist_threads())
     policy_classification, specialist_threads_pre = await asyncio.gather(classify_task, specialist_threads_task)
     log(f"Policy classified: {policy_classification['type']} | affects: {policy_classification['primary_affected']}")
 
@@ -1104,17 +1323,19 @@ async def run_simulation(policy_text, event_queue=None):
     log(f"\nSpecialist risks to validate: {len(specialist_risks)}")
     await emit({"type": "r1_complete", "specialists": specialist_results, "specialist_risks": specialist_risks})
 
-    # ROUND 2: Demographic validation
-    log(f"\nRound 2: {len(AGENTS)} demographic validators checking risks...")
+    # ROUND 2: Demographic validation + Benefits analysis (parallel)
+    log(f"\nRound 2: {len(AGENTS)} demographic validators checking risks + benefits analysis...")
     _is_ai = policy_classification.get("type") in ("ai", "technology", "digital")
     _calibration_label = "AI sector exposure data" if _is_ai else "CHS 2022 microdata"
     await emit({"type": "status", "message": f"Round 2: Calibrating {len(AGENTS)} validator personas against {_calibration_label}..."})
     r2_start = time.time()
-    validator_results, behavioral_profiles = await run_validators(
-        client, asst_id, AGENTS, policy_text, validation_context,
-        policy_classification, SURVEY_STATS,
+    (validator_results, behavioral_profiles), benefit_results_raw = await asyncio.gather(
+        run_validators(client, asst_id, AGENTS, policy_text, validation_context, policy_classification, SURVEY_STATS),
+        run_benefits_analysis(client, asst_id, SPECIALISTS, policy_text, policy_classification),
     )
     r2_time = time.time() - r2_start
+    total_benefits = sum(len(br.get("benefits", [])) for br in benefit_results_raw)
+    log(f"Benefits analysis complete — {total_benefits} benefits identified across {len(benefit_results_raw)} specialists")
 
     # Summarize validation
     total_confirmations = 0
@@ -1154,6 +1375,13 @@ async def run_simulation(policy_text, event_queue=None):
     await emit({"type": "r2b_complete", "deliberative": deliberative_results})
     await emit({"type": "status", "message": "Detecting cross-demographic fault lines..."})
 
+    # Aggregate benefits + net impact scoring
+    log("\nAggregating benefits and net impact per demographic...")
+    benefits_data = aggregate_benefits(benefit_results_raw, validator_results)
+    log(f"  Net positive: {benefits_data['summary']['net_positive_validators']} validators, "
+        f"net negative: {benefits_data['summary']['net_negative_validators']}, "
+        f"neutral: {benefits_data['summary']['net_neutral_validators']}")
+
     # Tension detection: cross-demographic disagreement analysis
     log("\nDetecting cross-demographic tensions...")
     tensions, tension_text = run_tension_detection(validator_results, specialist_risks)
@@ -1168,7 +1396,7 @@ async def run_simulation(policy_text, event_queue=None):
     c_start = time.time()
     risk_report = await run_coordinator(
         client, asst_id, policy_text, specialist_results, validator_results,
-        specialist_risks, tension_text,
+        specialist_risks, tension_text, benefits_data,
     )
     log(f"Coordinator complete in {time.time() - c_start:.1f}s")
 
@@ -1192,6 +1420,7 @@ async def run_simulation(policy_text, event_queue=None):
         "round_2b_deliberative": deliberative_results,
         "risk_report": risk_report,
         "demographic_tensions": tensions,
+        "benefits": benefits_data,
     }
 
     with open("cache/round_1_specialists.json", "w") as f:

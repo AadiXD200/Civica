@@ -13,6 +13,13 @@ def seal_simulation(policy_text: str, full_output: dict) -> str:
     timestamp = datetime.now(timezone.utc).isoformat()
     seal_id = hashlib.md5(f"{policy_text}{timestamp}".encode()).hexdigest()[:8]
 
+    # Stamp which new modules were active so re-runs can be compared
+    calibrated_count = sum(
+        1 for v in full_output.get("round_2_validators", [])
+        if v.get("behavioral_profile") and v["behavioral_profile"].get("financial_fragility")
+    )
+    tensions_count = len(full_output.get("demographic_tensions", []))
+
     sealed = {
         "seal_id": seal_id,
         "timestamp": timestamp,
@@ -21,7 +28,14 @@ def seal_simulation(policy_text: str, full_output: dict) -> str:
         "validation_status": "pending",
         "validated_against": None,
         "validation_date": None,
-        "validation_match_score": None
+        "validation_match_score": None,
+        "architecture_version": {
+            "persona_calibration": calibrated_count > 0,
+            "calibrated_validators": calibrated_count,
+            "tension_detection": tensions_count > 0,
+            "tensions_detected": tensions_count,
+            "pumf_microdata": "CHS 2022 PUMF — PSTIR_GR 3-code recoding applied",
+        }
     }
 
     path = f"validation_log/{seal_id}_{timestamp[:10]}.json"

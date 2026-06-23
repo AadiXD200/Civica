@@ -41,9 +41,16 @@ def _validate_policy(text: str) -> str | None:
 
 app = FastAPI()
 
+# Allow localhost for dev + any deployed frontend (set ALLOWED_ORIGINS env var in prod)
+_raw_origins = os.getenv(
+    "ALLOWED_ORIGINS",
+    "http://localhost:5173,http://localhost:4173",
+)
+_allowed_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:4173"],
+    allow_origins=_allowed_origins,
     allow_methods=["POST", "GET"],
     allow_headers=["*"],
 )
@@ -98,6 +105,11 @@ async def latest():
         return JSONResponse(json.load(f))
 
 
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=False)
+    uvicorn.run(app, host="0.0.0.0", port=8001, reload=False)

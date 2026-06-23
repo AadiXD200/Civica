@@ -7,7 +7,7 @@ import { Stage3Findings } from './components/Stage3Findings';
 import type { AnimationEntry, SimulationEvent, SimulationOutput, SpecialistResult, ValidatorResult } from './types';
 import './App.css';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = 'http://localhost:8001';
 
 type Stage = 'INPUT' | 'SIMULATION_R1' | 'SIMULATION_R2' | 'FINDINGS';
 

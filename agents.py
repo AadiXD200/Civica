@@ -1,4 +1,4 @@
-AGENTS = [
+_STATIC_AGENTS = [
     # === TORONTO (5 agents, weight 0.18) — 48% renter rate ===
     {"id": 1, "city": "Toronto", "province": "ON", "age_bracket": "18-24", "income_bracket": "very_low", "tenure": "renter", "debt_load": "high", "family_size": "single", "employment_type": "student", "immigration_status": "born_here", "population_weight": 0.18},
     {"id": 2, "city": "Toronto", "province": "ON", "age_bracket": "25-34", "income_bracket": "high", "tenure": "renter", "debt_load": "high", "family_size": "couple", "employment_type": "salaried", "immigration_status": "born_here", "population_weight": 0.18},
@@ -89,6 +89,26 @@ AGENTS = [
     {"id": 49, "city": "Nunavut Remote", "province": "NU", "age_bracket": "25-34", "income_bracket": "low", "tenure": "renter", "debt_load": "none", "family_size": "small_family", "employment_type": "salaried", "immigration_status": "born_here", "population_weight": 0.01},
     {"id": 50, "city": "Nunavut Remote", "province": "NU", "age_bracket": "50-64", "income_bracket": "medium", "tenure": "owner", "debt_load": "low", "family_size": "couple", "employment_type": "salaried", "immigration_status": "born_here", "population_weight": 0.01},
 ]
+
+
+def _load_agents() -> list:
+    """
+    Loads dynamic agents from CHS 2022 PUMF microdata if available,
+    otherwise falls back to the static hand-coded _STATIC_AGENTS list.
+    """
+    try:
+        import os
+        from agent_generator import load_or_generate_agents
+        cache_path = os.path.join(os.path.dirname(__file__), "data", "dynamic_agents.json")
+        result = load_or_generate_agents(cache_path)
+        if result is not None:
+            return result
+    except Exception as e:
+        print(f"[agents] Dynamic agent load failed ({e}), using static agents", flush=True)
+    return _STATIC_AGENTS
+
+
+AGENTS = _load_agents()
 
 
 def get_demographic_breakdowns(agents):

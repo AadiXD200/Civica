@@ -1,14 +1,13 @@
 import json
-import os
-from backboard import BackboardClient
 from dotenv import load_dotenv
 
 load_dotenv()
 
+
 async def classify_policy(client, asst_id, policy_text: str) -> dict:
     """
     Runs before simulation starts.
-    Classifies policy type to activate relevant agent attributes.
+    Classifies policy type to activate relevant agent attributes and data routing.
     """
     thread = await client.create_thread(asst_id)
     response = await client.add_message(
@@ -19,13 +18,15 @@ Policy: {policy_text}
 
 Return exactly this JSON and nothing else:
 {{
-    "type": "supply|demand|tax|healthcare|transit|labour|immigration|environment|education|other",
+    "type": "supply|demand|tax|ai|healthcare|transit|labour|immigration|environment|education|other",
     "primary_affected": "renters|owners|all|low_income|immigrants|seniors|youth|indigenous|workers",
     "market": "rental|ownership|both|non_housing",
     "geography": "national|provincial|urban|rural|regional",
     "time_horizon": "immediate|short_term|long_term",
     "key_attributes": ["list", "of", "3-5", "demographic", "attributes", "most", "relevant", "to", "this", "policy"]
-}}""",
+}}
+
+Use type "ai" for any policy primarily concerning artificial intelligence, automation, algorithmic systems, digital technology governance, or AI accountability.""",
         llm_provider="openai",
         model_name="gpt-4o",
         stream=False,

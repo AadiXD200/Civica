@@ -1,0 +1,177 @@
+{
+  "sources": [
+    {
+      "id": "ai_strategy_2026",
+      "name": "Canada's National Artificial Intelligence Strategy: AI for All",
+      "publisher": "Innovation, Science and Economic Development Canada (ISED)",
+      "year": 2026,
+      "url": "https://ised-isde.canada.ca/site/ised/en/canadas-national-artificial-intelligence-strategy-ai-all",
+      "citation": "Government of Canada. (2026). Canada's National Artificial Intelligence Strategy: AI for All. ISED."
+    },
+    {
+      "id": "statscan_ai_adoption_2024",
+      "name": "Analysis on artificial intelligence use by businesses in Canada, Q2 2024",
+      "publisher": "Statistics Canada",
+      "year": 2024,
+      "url": "https://www150.statcan.gc.ca/n1/pub/11-621-m/11-621-m2024008-eng.htm",
+      "citation": "Bryan, V., Sood, S., & Johnston, C. (2024). Analysis on artificial intelligence use by businesses in Canada, second quarter of 2024. Statistics Canada Catalogue no. 11-621-M."
+    },
+    {
+      "id": "cifar_impact_2024",
+      "name": "CIFAR Impact Report 2023-2024",
+      "publisher": "Canadian Institute for Advanced Research (CIFAR)",
+      "year": 2024,
+      "url": "https://cifar.ca/impact-report-2023-2024/",
+      "citation": "CIFAR. (2024). Impact Report 2023-2024. Canadian Institute for Advanced Research."
+    }
+  ],
+
+  "adoption": {
+    "note": "Statistics Canada Canadian Survey on Business Conditions, Q2 2024 (April-May 2024)",
+    "national_ai_adoption_pct": 6.1,
+    "national_ai_adoption_definition": "% of Canadian businesses using AI in producing goods or delivering services in the last 12 months",
+    "government_target_2034_pct": 60,
+    "current_adoption_gap": "Canada adopts AI at 12% broadly, well behind Nordic leaders at 29-42%",
+    "by_industry": {
+      "information_and_cultural": 20.9,
+      "professional_scientific_technical": 13.7,
+      "finance_and_insurance": 10.9,
+      "wholesale_trade": 7.5,
+      "retail_trade": 5.2,
+      "manufacturing": 4.8,
+      "construction": 2.1,
+      "accommodation_and_food": 0.9,
+      "agriculture_forestry_fishing": 0.7,
+      "mining_oil_gas": 1.6
+    },
+    "ai_application_types_pct": {
+      "natural_language_processing": 28.9,
+      "text_analytics": 27.0,
+      "virtual_agents_chatbots": 26.5,
+      "data_analytics": 25.0,
+      "large_language_models": 21.9,
+      "image_pattern_recognition": 21.8
+    },
+    "sme_note": "78% of non-adopting firms report barriers; SMEs (under 500 employees) represent 99.8% of Canadian businesses and employ 14.3 million workers — this is where Canada's adoption challenge lives"
+  },
+
+  "workforce": {
+    "note": "Sources: AI for All Strategy 2026, CIFAR Impact Report 2023-2024",
+    "digital_sector_workers": 800000,
+    "ai_directly_associated_jobs": 150000,
+    "ai_companies_count": 3500,
+    "ai_innovators_count": 150000,
+    "employment_impact_of_adoption": {
+      "no_change_pct": 84.9,
+      "reduced_tasks_small_extent_pct": 44.1,
+      "note": "84.9% of AI-adopting businesses reported no change in employee numbers (Q2 2024)"
+    },
+    "pro_worker_evidence": {
+      "oecd_survey_improved_performance_pct": 80,
+      "note": "OECD survey of manufacturing and finance workers across 7 countries including Canada: 80% said AI improved their performance; AI users 4x more likely to report gains in job satisfaction"
+    },
+    "government_job_targets": {
+      "new_ai_related_jobs_target": 90000,
+      "new_jobs_through_adoption_target": 250000,
+      "timeline": "targets set for 2026-2031 period"
+    },
+    "training": {
+      "ai_literacy_target_students": 1000000,
+      "educators_to_train": 3000,
+      "amii_annual_training": 125000,
+      "ai_pathways_energy_workers": 5000
+    }
+  },
+
+  "research_talent": {
+    "note": "Source: CIFAR Impact Report 2023-2024",
+    "canada_ai_research_rank_per_capita": 2,
+    "canada_global_ai_index_rank": 5,
+    "active_canada_cifar_ai_chairs": 129,
+    "total_cifar_researchers": 495,
+    "cifar_researcher_institutions": 206,
+    "annual_graduates_from_chair_labs": 310,
+    "nextgen_trainees": 1438,
+    "actively_engaged_ai_professionals": 140418,
+    "top_cited_papers_pct": 65,
+    "national_ai_institutes": ["Amii (Edmonton)", "Mila (Montreal)", "Vector Institute (Toronto)"],
+    "active_industry_partnerships": 357,
+    "talent_context": "Canada has successfully attracted international AI researchers through the Canada CIFAR AI Chairs program; 129 active chairs including international recruits. Canada ranks 2nd globally in AI research papers per capita."
+  },
+
+  "investment": {
+    "note": "Source: AI for All Strategy 2026",
+    "venture_capital_2025_bn": 3.1,
+    "venture_capital_rank_globally": "top tier globally",
+    "vc_info_tech_concentration_pct": 57,
+    "existing_compute_investment_bn": 2.0,
+    "generative_ai_gdp_potential_bn": 187,
+    "strategy_gdp_target_bn": 200,
+    "federal_investments_budget_2025_bn": 1.75,
+    "compute_access_fund": "Enhance access to public compute for SMEs — specific amount not disclosed",
+    "key_programs": {
+      "lift_program": 500000000,
+      "canadian_tech_fund": 500000000,
+      "health_ai_investment": 200000000,
+      "vital_program_expansion": 100000000,
+      "ai_safety_institute": 50000000,
+      "cancode_digital_skills": 30000000,
+      "creative_technology_fund": 50000000
+    }
+  },
+
+  "risks_and_gaps": {
+    "adoption_gap": {
+      "current_adoption_pct": 6.1,
+      "target_2034_pct": 60,
+      "gap": "Canada lags Nordic countries (29-42%) significantly; SME adoption is the core challenge",
+      "barrier_pct_of_non_adopters": 78
+    },
+    "sovereignty": {
+      "concern": "Over-dependence on foreign AI platforms and compute infrastructure",
+      "context": "Canada advantaged in research but lagging in adoption and over-exposed to foreign technology dependencies",
+      "response": "Sovereign AI foundation pillar — Canadian compute, Canadian data infrastructure, Canadian AI champions"
+    },
+    "regional_disparity": {
+      "ai_hubs": ["Toronto (Vector Institute)", "Montreal (Mila)", "Edmonton (Amii)"],
+      "gap": "AI benefits concentrated in major urban centres; rural, remote, and Indigenous communities face access barriers",
+      "indigenous_note": "Considerable evidence of disproportionate exposure to AI harms for Indigenous Peoples; Canada committed to supporting Indigenous leadership in AI governance"
+    },
+    "labour_displacement": {
+      "current_evidence": "84.9% of adopting businesses report no employment change (Q2 2024)",
+      "concern": "Rapid scaling from 6.1% to 60% adoption by 2034 would represent major structural shift",
+      "vulnerable_sectors": ["accommodation and food services", "agriculture", "administrative and support"],
+      "pro_worker_approach": "Government strategy explicitly commits to augmentation over displacement; OECD evidence shows positive outcomes when implemented pro-worker"
+    },
+    "sme_capacity": {
+      "sme_share_of_businesses_pct": 99.8,
+      "sme_employment_millions": 14.3,
+      "current_sme_ai_adoption": "well below 6.1% national average",
+      "barriers": "cost, skills gaps, lack of trusted implementation pathways, compliance burden"
+    }
+  },
+
+  "regulatory_context": {
+    "eu_ai_act": "Passed 2024 — Canada has no equivalent binding legislation",
+    "canada_directives": "Treasury Board Directive on Automated Decision-Making (2019, updated 2023) — applies only to federal government",
+    "bill_c27_aida": "Artificial Intelligence and Data Act (AIDA) — proposed but not yet passed as of 2026",
+    "accountability_gap": "No binding AI disclosure or accountability requirements for private sector in Canada",
+    "global_context": "UK, EU, US all developing AI governance frameworks; Canada risks regulatory gap creating competitive and trust disadvantage"
+  },
+
+  "policy_relevance_by_type": {
+    "ai_disclosure_accountability": {
+      "relevant_stats": ["6.1% current adoption", "20.9% in tech sector", "84.9% no employment change", "78% non-adopters cite barriers"],
+      "key_tension": "Disclosure requirement creates compliance burden for 99.8% of SMEs to regulate practices that only 6.1% currently use",
+      "workers_affected_estimate": "150,000 directly in AI roles; potentially millions more as adoption reaches 60% target"
+    },
+    "ai_compute_investment": {
+      "relevant_stats": ["Canada ranks 2nd in AI research per capita", "150,000 AI jobs", "$3.1B VC 2025", "compute access cited as barrier"],
+      "key_tension": "Public compute investment benefits research community and large firms; SME access mechanisms unclear"
+    },
+    "ai_skills_training": {
+      "relevant_stats": ["1M students targeted", "125,000 Amii trains annually", "3,000 educators targeted"],
+      "key_tension": "Urban concentration of AI institutes vs need for national skills distribution"
+    }
+  }
+}
