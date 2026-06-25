@@ -942,7 +942,7 @@ export const Stage3Findings: React.FC<Props> = ({ data, onRestart, onBack }) => 
 
   const handleExport = async () => {
     setExporting(true);
-    try { await exportReportPDF(data.seal_id); }
+    try { await exportReportPDF(data); }
     finally { setExporting(false); }
   };
 
