@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import type {
   BenefitItem, BenefitsData, Citation, CityDataUsed, CohortStats,
-  DemographicTension, NetImpactGroup, PersonaProfile, SectorProfile,
+  DemographicTension, NetImpactGroup, PersonaProfile,
   SimulationOutput, SpecialistRisk, ValidatorResult,
 } from '../types';
 import { exportReportPDF } from '../utils/exportPDF';
@@ -208,7 +208,7 @@ const TimelineSwimlane: React.FC<{ risks: TimelineRisk[] }> = ({ risks }) => {
 // ── City Exposure Heatmap ─────────────────────────────────────────────────────
 
 const CityHeatmap: React.FC<{ validators: ValidatorResult[]; specialistRisks: SpecialistRisk[] }> = ({
-  validators, specialistRisks,
+  validators, specialistRisks: _specialistRisks,
 }) => {
   // Score each city: sum of (severity × population_weight) for confirmed risks
   const cityScores: Record<string, { score: number; count: number; confirmed: number }> = {};
@@ -236,7 +236,7 @@ const CityHeatmap: React.FC<{ validators: ValidatorResult[]; specialistRisks: Sp
 
   return (
     <div className="city-heatmap">
-      {sorted.map(({ city, score, confirmed, count }) => {
+      {sorted.map(({ city, score, confirmed }) => {
         const pct = maxScore > 0 ? (score / maxScore) * 100 : 0;
         const intensity = pct / 100;
         const col = `rgba(${Math.round(220 * intensity)}, ${Math.round(50 * (1 - intensity))}, ${Math.round(50 * (1 - intensity))}, ${0.3 + intensity * 0.7})`;
@@ -493,7 +493,6 @@ const BenefitCard: React.FC<{ benefit: BenefitItem }> = ({ benefit }) => {
 };
 
 const BenefitsSection: React.FC<{ benefits: BenefitsData }> = ({ benefits }) => {
-  const [showNetDetail, setShowNetDetail] = useState(false);
 
   const { benefit_items, net_by_tenure, net_by_income, net_by_age, summary } = benefits;
   if (benefit_items.length === 0) return null;
