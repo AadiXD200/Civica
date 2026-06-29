@@ -1360,13 +1360,6 @@ export const Stage3Findings: React.FC<Props> = ({ data, onRestart, onBack }) => 
             <PeerReviewSection peerReview={data.peer_review} />
           )}
 
-          {/* ── City Exposure Heatmap ── */}
-          <section className="section-city-heatmap">
-            <h4>CITY EXPOSURE — RISK BURDEN BY LOCATION</h4>
-            <p className="section-subheader">Weighted risk confirmation score per city — higher = validators in that city confirmed more and higher-severity risks</p>
-            <CityHeatmap validators={round_2_validators} specialistRisks={specialist_risks} />
-          </section>
-
           {/* ── Specialist Risk Assessment ── */}
           <section className="section-specialist-risks">
             <h4>SPECIALIST RISK ASSESSMENT — {specialist_risks.length} RISKS IDENTIFIED · CLICK TO EXPAND</h4>
