@@ -2,22 +2,16 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import type {
   BenefitItem, BenefitsData, Citation, CityDataUsed, CohortStats,
-  DemographicTension, NetImpactGroup, PersonaProfile,
+  DemographicTension, FiscalScorecard, InstitutionalActor, NetImpactGroup,
+  PanelCoverageRow, PeerReview, PersonaProfile,
   SimulationOutput, SpecialistRisk, ValidatorResult,
 } from '../types';
 import { exportReportPDF } from '../utils/exportPDF';
 import './Stage3.css';
 
-const SPECIALIST_LABELS: Record<string, string> = {
-  labor_economist: 'Labor Economist',
-  urban_planner: 'Urban Planner',
-  fiscal_analyst: 'Fiscal Analyst',
-  housing_economist: 'Housing Economist',
-  social_equity_researcher: 'Equity Researcher',
-  regional_development_analyst: 'Regional Analyst',
-  construction_industry_analyst: 'Construction Analyst',
-  demographic_economist: 'Demographic Economist',
-};
+function formatSpecialistLabel(id: string): string {
+  return id.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -132,10 +126,16 @@ const NetImpactBar: React.FC<{ group: string; data: NetImpactGroup; maxAbsNet: n
           }}
         />
       </div>
-      <span className="net-bar-value" style={{ color: col }}>
-        {data.avg_net > 0 ? '+' : ''}{data.avg_net.toFixed(1)} <span className="net-bar-sublabel">({label})</span>
+      <span className="net-bar-value" style={{ color: data.count === 1 ? 'var(--text-muted)' : col }}>
+        {data.avg_net > 0 ? '+' : ''}{data.avg_net.toFixed(1)}{' '}
+        {data.count === 1
+          ? <span className="net-bar-caveat">illustrative, n=1</span>
+          : data.count <= 3
+            ? <span className="net-bar-caveat">n={data.count}, limited</span>
+            : <span className="net-bar-sublabel">({label})</span>
+        }
       </span>
-      <span className="net-bar-count">{data.count} validators</span>
+      <span className="net-bar-count">{data.count} validator{data.count !== 1 ? 's' : ''}</span>
     </div>
   );
 };
@@ -458,7 +458,7 @@ const BenefitCard: React.FC<{ benefit: BenefitItem }> = ({ benefit }) => {
     <div className="benefit-card" style={{ borderLeftColor: col }}>
       <div className="benefit-card-header">
         <div className="benefit-card-badges">
-          <span className="badge-specialist">{SPECIALIST_LABELS[benefit.source_specialist] || benefit.source_specialist}</span>
+          <span className="badge-specialist">{formatSpecialistLabel(benefit.source_specialist)}</span>
           <span className="badge-category">{benefit.category}</span>
           <span className="badge-severity" style={{ color: col }}>{magnitudeLabel(benefit.magnitude)}</span>
         </div>
@@ -492,7 +492,7 @@ const BenefitCard: React.FC<{ benefit: BenefitItem }> = ({ benefit }) => {
   );
 };
 
-const BenefitsSection: React.FC<{ benefits: BenefitsData }> = ({ benefits }) => {
+const BenefitsSection: React.FC<{ benefits: BenefitsData; primaryPopGap?: boolean }> = ({ benefits, primaryPopGap }) => {
 
   const { benefit_items, net_by_tenure, net_by_income, net_by_age, summary } = benefits;
   if (benefit_items.length === 0) return null;
@@ -514,47 +514,58 @@ const BenefitsSection: React.FC<{ benefits: BenefitsData }> = ({ benefits }) => 
         Direct gains this policy creates, identified by domain specialists. Net impact scores compare benefit gains against risk burden per demographic group.
       </p>
 
-      {/* Net impact summary row */}
-      <div className="benefits-summary-row">
-        <div className="benefits-net-donut">
-          <DonutChart
-            slices={donutSlices}
-            total={summary.net_positive_validators + summary.net_neutral_validators + summary.net_negative_validators}
-            label="NET IMPACT"
-            size={100}
-          />
-          <div className="donut-legend">
-            {donutSlices.map(s => (
-              <div key={s.label} className="donut-legend-item">
-                <span className="donut-legend-dot" style={{ backgroundColor: s.color }} />
-                <span style={{ color: s.color }}>{s.label}</span>
-                <span className="donut-legend-count">{s.value}</span>
-              </div>
-            ))}
-          </div>
+      {primaryPopGap ? (
+        <div className="primary-pop-gap-notice blind-spots-note">
+          NET IMPACT NOT COMPUTABLE — panel does not represent the primary affected population for this policy type. Confirm specialist findings against domain-specific data.
+          {summary.net_positive_validators + summary.net_neutral_validators + summary.net_negative_validators > 0 && (
+            <span className="pop-gap-raw-counts">
+              {' '}(raw validator counts: ▲{summary.net_positive_validators} gain · ={summary.net_neutral_validators} neutral · ▼{summary.net_negative_validators} loss — not representative)
+            </span>
+          )}
         </div>
+      ) : (
+        /* Net impact summary row */
+        <div className="benefits-summary-row">
+          <div className="benefits-net-donut">
+            <DonutChart
+              slices={donutSlices}
+              total={summary.net_positive_validators + summary.net_neutral_validators + summary.net_negative_validators}
+              label="NET IMPACT"
+              size={100}
+            />
+            <div className="donut-legend">
+              {donutSlices.map(s => (
+                <div key={s.label} className="donut-legend-item">
+                  <span className="donut-legend-dot" style={{ backgroundColor: s.color }} />
+                  <span style={{ color: s.color }}>{s.label}</span>
+                  <span className="donut-legend-count">{s.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
 
-        <div className="benefits-net-bars">
-          <div className="net-bars-section">
-            <span className="net-bars-title">BY TENURE</span>
-            {Object.entries(net_by_tenure).sort((a, b) => b[1].avg_net - a[1].avg_net).map(([g, d]) => (
-              <NetImpactBar key={g} group={g} data={d} maxAbsNet={maxAbsNet} />
-            ))}
-          </div>
-          <div className="net-bars-section">
-            <span className="net-bars-title">BY INCOME</span>
-            {Object.entries(net_by_income).sort((a, b) => b[1].avg_net - a[1].avg_net).map(([g, d]) => (
-              <NetImpactBar key={g} group={g} data={d} maxAbsNet={maxAbsNet} />
-            ))}
-          </div>
-          <div className="net-bars-section">
-            <span className="net-bars-title">BY AGE</span>
-            {Object.entries(net_by_age).sort((a, b) => b[1].avg_net - a[1].avg_net).map(([g, d]) => (
-              <NetImpactBar key={g} group={g} data={d} maxAbsNet={maxAbsNet} />
-            ))}
+          <div className="benefits-net-bars">
+            <div className="net-bars-section">
+              <span className="net-bars-title">BY TENURE</span>
+              {Object.entries(net_by_tenure).sort((a, b) => b[1].avg_net - a[1].avg_net).map(([g, d]) => (
+                <NetImpactBar key={g} group={g} data={d} maxAbsNet={maxAbsNet} />
+              ))}
+            </div>
+            <div className="net-bars-section">
+              <span className="net-bars-title">BY INCOME</span>
+              {Object.entries(net_by_income).sort((a, b) => b[1].avg_net - a[1].avg_net).map(([g, d]) => (
+                <NetImpactBar key={g} group={g} data={d} maxAbsNet={maxAbsNet} />
+              ))}
+            </div>
+            <div className="net-bars-section">
+              <span className="net-bars-title">BY AGE</span>
+              {Object.entries(net_by_age).sort((a, b) => b[1].avg_net - a[1].avg_net).filter(([, d]) => d.count > 1).map(([g, d]) => (
+                <NetImpactBar key={g} group={g} data={d} maxAbsNet={maxAbsNet} />
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Benefit cards */}
       <div className="risk-cards-list" style={{ marginTop: '1.5rem' }}>
@@ -641,6 +652,252 @@ const DIMENSION_LABEL: Record<string, string> = {
   tenure: 'TENURE SPLIT', income: 'INCOME SPLIT', geography: 'GEOGRAPHY SPLIT',
   age: 'AGE SPLIT', immigration: 'IMMIGRATION SPLIT',
 };
+
+// ── Panel Coverage Table ──────────────────────────────────────────────────────
+
+const STATUS_CONFIG: Record<PanelCoverageRow['status'], { icon: string; color: string; label: string }> = {
+  represented: { icon: '✓', color: 'var(--signal-positive)', label: 'Represented' },
+  partial:     { icon: '~', color: 'var(--signal-mixed)',    label: 'Partial' },
+  thin:        { icon: '!', color: '#f59e0b',                label: 'Thin (n=1)' },
+  absent:      { icon: '✗', color: 'var(--signal-negative)', label: 'Absent' },
+};
+
+const PanelCoverageTable: React.FC<{ rows: PanelCoverageRow[] }> = ({ rows }) => {
+  const absentCount = rows.filter(r => r.status === 'absent').length;
+  const thinCount   = rows.filter(r => r.status === 'thin').length;
+  return (
+    <div className="panel-coverage-table">
+      <div className="panel-coverage-header">
+        <span className="blind-label">WHO'S IN THE ROOM —</span>{' '}
+        <span className="panel-coverage-summary">
+          {rows.length} specialist-identified populations ·{' '}
+          {absentCount > 0 && <span style={{ color: 'var(--signal-negative)' }}>{absentCount} absent</span>}
+          {absentCount > 0 && thinCount > 0 && ', '}
+          {thinCount > 0 && <span style={{ color: '#f59e0b' }}>{thinCount} thin</span>}
+          {absentCount === 0 && thinCount === 0 && <span style={{ color: 'var(--signal-positive)' }}>all represented</span>}
+        </span>
+      </div>
+      <table className="coverage-tbl">
+        <thead>
+          <tr>
+            <th>Population</th>
+            <th>Status</th>
+            <th>Validators</th>
+            <th>Note</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => {
+            const cfg = STATUS_CONFIG[row.status];
+            return (
+              <tr key={i} className={`coverage-row coverage-${row.status}`}>
+                <td className="coverage-pop">{row.population}</td>
+                <td className="coverage-status" style={{ color: cfg.color }}>
+                  <span className="coverage-icon">{cfg.icon}</span> {cfg.label}
+                </td>
+                <td className="coverage-n">{row.n_validators}</td>
+                <td className="coverage-note-cell">{row.note}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+// ── Fiscal Scorecard ──────────────────────────────────────────────────────────
+
+function formatCad(amount: number | null | undefined, unit: string): string | null {
+  if (amount == null || !isFinite(amount)) return null;
+  const abs = Math.abs(amount);
+  const prefix = amount < 0 ? '-' : '';
+  if (unit.includes('billion') || abs >= 1000) return `${prefix}$${(abs / 1000).toFixed(1)}B`;
+  if (unit.includes('million') || abs >= 1) return `${prefix}$${abs.toFixed(0)}M`;
+  return `${prefix}$${abs.toFixed(2)}M`;
+}
+
+const CERTAINTY_STYLE: Record<string, string> = {
+  stated: 'var(--text-primary)',
+  estimated: 'var(--signal-mixed)',
+  implied: 'var(--text-muted)',
+};
+
+const FiscalScorecardPanel: React.FC<{ scorecard: FiscalScorecard }> = ({ scorecard }) => {
+  if (!scorecard.has_fiscal_content) return null;
+  const netLabel = scorecard.net_position_label ?? 'uncertain';
+  const netColor = netLabel === 'net revenue' ? 'var(--signal-positive)'
+    : netLabel === 'net cost' ? 'var(--signal-negative)'
+    : netLabel === 'revenue-neutral' ? 'var(--signal-mixed)'
+    : 'var(--text-muted)';
+  return (
+    <section className="fiscal-scorecard">
+      <h4>FISCAL SCORECARD</h4>
+      <p className="section-subheader">
+        Dollar figures extracted from policy text and specialist analysis ·{' '}
+        {scorecard.implementation_window ?? 'window not specified'}
+      </p>
+      <div className="fiscal-top-line">
+        <div className="fiscal-top-item">
+          <span className="fiscal-top-label">Total Committed Spend</span>
+          <span className="fiscal-top-value" style={{ color: 'var(--signal-negative)' }}>
+            {formatCad(scorecard.total_committed_spend_cad, 'million') ?? '—'}
+          </span>
+        </div>
+        <div className="fiscal-top-item">
+          <span className="fiscal-top-label">Total Revenue</span>
+          <span className="fiscal-top-value" style={{ color: 'var(--signal-positive)' }}>
+            {formatCad(scorecard.total_revenue_cad, 'million') ?? '—'}
+          </span>
+        </div>
+        <div className="fiscal-top-item fiscal-net">
+          <span className="fiscal-top-label">Net Position</span>
+          <span className="fiscal-top-value" style={{ color: netColor }}>
+            {formatCad(scorecard.net_fiscal_position_cad, 'million') ?? '—'}
+            {' '}<span className="fiscal-net-label">({netLabel})</span>
+          </span>
+        </div>
+      </div>
+      {(scorecard.committed_spend?.length ?? 0) > 0 && (
+        <div className="fiscal-section">
+          <div className="fiscal-section-title">Committed Spend</div>
+          {scorecard.committed_spend!.map((item, i) => {
+            const formatted = formatCad(item.amount_cad, item.unit);
+            return (
+              <div key={i} className="fiscal-row">
+                <span className="fiscal-item-name">{item.item}</span>
+                <span className="fiscal-item-source">{item.source}</span>
+                <span className="fiscal-item-amount" style={{ color: formatted ? (CERTAINTY_STYLE[item.certainty] ?? 'var(--text-muted)') : 'var(--text-muted)' }}>
+                  {formatted
+                    ? <>{formatted}{item.certainty !== 'stated' && <span className="fiscal-certainty"> ({item.certainty})</span>}</>
+                    : <span className="fiscal-unquantified-inline">unquantified</span>
+                  }
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {(scorecard.revenue_sources?.length ?? 0) > 0 && (
+        <div className="fiscal-section">
+          <div className="fiscal-section-title">Revenue Sources</div>
+          {scorecard.revenue_sources!.map((item, i) => {
+            const formatted = formatCad(item.amount_cad, item.unit);
+            return (
+              <div key={i} className="fiscal-row">
+                <span className="fiscal-item-name">{item.item}</span>
+                <span className="fiscal-item-source">{item.source}</span>
+                <span className="fiscal-item-amount" style={{ color: formatted ? (CERTAINTY_STYLE[item.certainty] ?? 'var(--text-muted)') : 'var(--text-muted)' }}>
+                  {formatted
+                    ? <>{formatted}{item.certainty !== 'stated' && <span className="fiscal-certainty"> ({item.certainty})</span>}</>
+                    : <span className="fiscal-unquantified-inline">unquantified</span>
+                  }
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {(scorecard.unquantified_items?.length ?? 0) > 0 && (
+        <div className="fiscal-section">
+          <div className="fiscal-section-title">Unquantified Items</div>
+          {scorecard.unquantified_items!.map((item, i) => (
+            <div key={i} className="fiscal-unquantified">· {item}</div>
+          ))}
+        </div>
+      )}
+      {scorecard.caveats && <p className="fiscal-caveats">{scorecard.caveats}</p>}
+    </section>
+  );
+};
+
+// ── Institutional Panel Section ───────────────────────────────────────────────
+
+function stanceColor(stance: string | undefined): string {
+  if (stance === 'resistant') return 'var(--signal-negative)';
+  if (stance === 'supportive') return 'var(--signal-positive)';
+  return 'var(--text-muted)';
+}
+
+const InstitutionalPanelSection: React.FC<{ actors: InstitutionalActor[] }> = ({ actors }) => (
+  <section className="section-institutional-panel">
+    <h4>INSTITUTIONAL ACTOR SIGNALS — {actors.length} ACTORS</h4>
+    <p className="section-subheader">
+      How institutions (landlords, provinces, employers) are likely to respond to identified risks
+    </p>
+    <div className="institutional-panel">
+      {actors.map(actor => {
+        const applied = (actor.validations ?? []).filter(v => v.applies);
+        const responses = applied.map(v => v.institutional_response);
+        const mostCommon = responses.length
+          ? responses.sort((a, b) => responses.filter(r => r === b).length - responses.filter(r => r === a).length)[0]
+          : null;
+        return (
+          <div key={actor.agent_id} className="inst-actor-card">
+            <div className="inst-actor-header">
+              <span className="inst-label">{actor.label}</span>
+              <span className="inst-stance-badge" style={{ color: stanceColor(actor.overall_stance) }}>
+                {(actor.overall_stance ?? 'neutral').toUpperCase()}
+              </span>
+            </div>
+            <div className="inst-key-concern">{actor.key_concern || '—'}</div>
+            <div className="inst-meta">
+              <span className="inst-meta-item">{applied.length}/{(actor.validations ?? []).length} risks apply</span>
+              {mostCommon && <span className="inst-meta-item inst-response">response: {mostCommon}</span>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  </section>
+);
+
+// ── Peer Review Section ───────────────────────────────────────────────────────
+
+function verdictColor(verdict: string): string {
+  if (verdict === 'valid') return 'var(--signal-positive)';
+  if (verdict === 'overstated' || verdict === 'understated') return 'var(--signal-mixed)';
+  return 'var(--signal-negative)';
+}
+
+const PeerReviewSection: React.FC<{ peerReview: PeerReview }> = ({ peerReview }) => (
+  <section className="section-peer-review">
+    <h4>ADVERSARIAL PEER REVIEW — {peerReview.critiques.length} CRITIQUES</h4>
+    <p className="section-subheader">
+      Independent adversarial critique of specialist findings — mechanism validity, severity calibration, and duplication
+    </p>
+    {peerReview.panel_summary && (
+      <div className="peer-panel-summary">
+        <span className="peer-summary-label">PANEL ASSESSMENT:</span>{' '}{peerReview.panel_summary}
+      </div>
+    )}
+    <div className="peer-critiques-list">
+      {peerReview.critiques.map((c, i) => (
+        <div key={i} className="peer-critique-card">
+          <div className="peer-critique-header">
+            <span className="peer-risk-index">Risk {c.risk_index}</span>
+            <span className="peer-risk-title">{c.risk_title}</span>
+            <span className="peer-verdict-badge" style={{ color: verdictColor(c.verdict) }}>
+              {c.verdict.replace('_', ' ').toUpperCase()}
+            </span>
+            {c.severity_adjustment && (
+              <span className="peer-adj-badge">SEV: {c.severity_adjustment.toUpperCase()}</span>
+            )}
+            {c.duplicate_of != null && (
+              <span className="peer-dup-badge">DUP of Risk {c.duplicate_of}</span>
+            )}
+          </div>
+          <div className="peer-critique-text">{c.critique}</div>
+          {c.suggested_revision && (
+            <div className="peer-revision">
+              <span className="peer-revision-label">Suggested revision:</span>{' '}{c.suggested_revision}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  </section>
+);
 
 const TensionsSection: React.FC<{ tensions: DemographicTension[]; specialistRisks: SpecialistRisk[] }> = ({ tensions, specialistRisks }) => {
   if (tensions.length === 0) return null;
@@ -742,7 +999,7 @@ const SpecialistRiskCard: React.FC<RiskCardProps> = ({ risk, riskIndex, validato
     <div className="risk-card" style={{ borderLeftColor: color }}>
       <div className="risk-card-header">
         <div className="risk-card-badges">
-          <span className="badge-specialist">{SPECIALIST_LABELS[risk.source] || risk.source}</span>
+          <span className="badge-specialist">{formatSpecialistLabel(risk.source)}</span>
           <span className="badge-category">{risk.category}</span>
           <span className="badge-severity" style={{ color }}>{severityLabel(risk.severity)}</span>
         </div>
@@ -946,6 +1203,11 @@ export const Stage3Findings: React.FC<Props> = ({ data, onRestart, onBack }) => 
     finally { setExporting(false); }
   };
 
+  // Gate: check if primary population coverage failed
+  const primaryPopGap = !!(data.confidence?.checks.some(
+    c => c.status === 'fail' && c.label.startsWith('Primary population gap')
+  ));
+
   const riskLevelColor = severityColor(risk_report.overall_risk_level);
   const agentTopRisks = round_2_validators.map(v => {
     const top = getTopValidationForAgent(v);
@@ -986,6 +1248,7 @@ export const Stage3Findings: React.FC<Props> = ({ data, onRestart, onBack }) => 
           <div className="report-meta">
             <span>CLASSIFIED INTELLIGENCE REPORT</span>
             <span>SEAL: {data.seal_id || '—'}</span>
+            <span>PANEL: {data.panel_version_id ?? '—'}</span>
           </div>
           <div className="report-policy">
             <h2>POLICY DIRECTIVE</h2>
@@ -1021,7 +1284,7 @@ export const Stage3Findings: React.FC<Props> = ({ data, onRestart, onBack }) => 
                   </span>
                 </div>
               )}
-              {data.benefits && (
+              {data.benefits && !primaryPopGap && (
                 <div className="summary-stat">
                   <span className="summary-label">NET POSITIVE</span>
                   <span className="summary-value" style={{ color: 'var(--signal-positive)' }}>
@@ -1033,7 +1296,7 @@ export const Stage3Findings: React.FC<Props> = ({ data, onRestart, onBack }) => 
 
             <h1 className="emergent-headline">{risk_report.key_insight}</h1>
 
-            <PublicReceptionBar validators={round_2_validators} />
+            {!primaryPopGap && <PublicReceptionBar validators={round_2_validators} />}
 
             {/* Demographic breakdown donuts */}
             <DemographicBreakdown validators={round_2_validators} />
@@ -1046,15 +1309,21 @@ export const Stage3Findings: React.FC<Props> = ({ data, onRestart, onBack }) => 
                   : (
                     <span>
                       {risk_report.blind_spots.underrepresented_groups}
-                      {risk_report.blind_spots.unmodeled_effects && <> · {risk_report.blind_spots.unmodeled_effects}</>}
-                      {risk_report.blind_spots.coverage_note && <> · <em>{risk_report.blind_spots.coverage_note}</em></>}
-                      {(risk_report.blind_spots as any).panel_skew_warning && (
+                      {risk_report.blind_spots.unmodeled_effects && risk_report.blind_spots.unmodeled_effects !== 'null' && <> · {risk_report.blind_spots.unmodeled_effects}</>}
+                      {risk_report.blind_spots.coverage_note && risk_report.blind_spots.coverage_note !== 'null' && <> · <em>{risk_report.blind_spots.coverage_note}</em></>}
+                      {(risk_report.blind_spots as any).panel_skew_warning && (risk_report.blind_spots as any).panel_skew_warning !== 'null' && (
                         <> · <em style={{ color: 'var(--signal-mixed)' }}>{(risk_report.blind_spots as any).panel_skew_warning}</em></>
                       )}
                     </span>
                   )
                 }
               </div>
+            )}
+
+            {risk_report.blind_spots && typeof risk_report.blind_spots !== 'string' &&
+              risk_report.blind_spots.panel_coverage_table &&
+              risk_report.blind_spots.panel_coverage_table.length > 0 && (
+              <PanelCoverageTable rows={risk_report.blind_spots.panel_coverage_table} />
             )}
 
             {data.confidence && <ConfidencePanel confidence={data.confidence} />}
@@ -1073,7 +1342,22 @@ export const Stage3Findings: React.FC<Props> = ({ data, onRestart, onBack }) => 
 
           {/* ── Benefits Layer ── */}
           {data.benefits && data.benefits.benefit_items.length > 0 && (
-            <BenefitsSection benefits={data.benefits} />
+            <BenefitsSection benefits={data.benefits} primaryPopGap={primaryPopGap} />
+          )}
+
+          {/* ── Fiscal Scorecard ── */}
+          {data.fiscal_scorecard && data.fiscal_scorecard.has_fiscal_content && (
+            <FiscalScorecardPanel scorecard={data.fiscal_scorecard} />
+          )}
+
+          {/* ── Institutional Actor Panel ── */}
+          {data.institutional_panel && data.institutional_panel.length > 0 && (
+            <InstitutionalPanelSection actors={data.institutional_panel} />
+          )}
+
+          {/* ── Peer Review ── */}
+          {data.peer_review && data.peer_review.critiques.length > 0 && (
+            <PeerReviewSection peerReview={data.peer_review} />
           )}
 
           {/* ── City Exposure Heatmap ── */}

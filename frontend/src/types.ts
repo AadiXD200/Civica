@@ -152,12 +152,22 @@ export interface RiskReportItem {
   cascade_effect: CascadeEffect | string | null;
 }
 
+export interface PanelCoverageRow {
+  population: string;
+  specialist_identified_as: string;
+  status: 'represented' | 'partial' | 'thin' | 'absent';
+  n_validators: number;
+  note: string;
+}
+
 export interface BlindSpots {
   underrepresented_groups: string;
   unmodeled_effects: string;
   data_gaps: string;
   coverage_note: string;
   panel_skew_warning?: string;
+  user_identified_exclusions?: string | null;
+  panel_coverage_table?: PanelCoverageRow[];
 }
 
 // ── Benefits layer ──────────────────────────────────────────────────────────
@@ -203,6 +213,8 @@ export interface BenefitsData {
     net_positive_validators: number;
     net_negative_validators: number;
     net_neutral_validators: number;
+    net_positive_weighted_pct?: number;
+    net_negative_weighted_pct?: number;
     total_benefit_items: number;
   };
 }
@@ -246,8 +258,93 @@ export interface SimulationOutput {
     key_attributes: string[];
   };
   seal_id?: string;
+  panel_version_id?: string;
+  panel_scope?: string;
+  institutional_panel?: InstitutionalActor[];
+  peer_review?: PeerReview;
+  risk_stability?: {
+    score: number;
+    out_of: number;
+    label: 'HIGH' | 'MEDIUM' | 'LOW';
+    breakdown?: Record<string, number>;
+  };
   demographic_tensions?: DemographicTension[];
   benefits?: BenefitsData;
+  fiscal_scorecard?: FiscalScorecard;
+}
+
+export interface FiscalLineItem {
+  item: string;
+  amount_cad: number;
+  unit: string;
+  certainty: 'stated' | 'estimated' | 'implied';
+  source: string;
+  note?: string;
+}
+
+// ── Institutional actor panel ───────────────────────────────────────────────
+
+export interface InstitutionalValidation {
+  risk_index: number;
+  applies: boolean;
+  institutional_response: string;
+  severity: number;
+  reasoning: string;
+}
+
+export interface InstitutionalActor {
+  agent_id: string;
+  institution_type: string;
+  label: string;
+  city: string;
+  decision_context: string;
+  primary_lever: string;
+  overall_stance?: string;
+  key_concern?: string;
+  validations?: InstitutionalValidation[];
+}
+
+// ── Peer review ─────────────────────────────────────────────────────────────
+
+export interface PeerReviewCritique {
+  risk_index: number;
+  risk_title: string;
+  verdict: 'valid' | 'overstated' | 'understated' | 'duplicate' | 'mechanism_invalid';
+  severity_adjustment: 'upgrade' | 'downgrade' | null;
+  duplicate_of: number | null;
+  critique: string;
+  suggested_revision: string | null;
+}
+
+export interface PeerReview {
+  critiques: PeerReviewCritique[];
+  panel_summary: string;
+}
+
+export interface FiscalScorecard {
+  has_fiscal_content: boolean;
+  implementation_window?: string;
+  committed_spend?: FiscalLineItem[];
+  revenue_sources?: FiscalLineItem[];
+  transfers?: FiscalLineItem[];
+  total_committed_spend_cad?: number;
+  total_revenue_cad?: number;
+  net_fiscal_position_cad?: number;
+  net_position_label?: 'net cost' | 'net revenue' | 'revenue-neutral' | 'uncertain';
+  unquantified_items?: string[];
+  caveats?: string;
+  _error?: string;
+}
+
+// ── Policy intake (structured form) ────────────────────────────────────────
+
+export interface PolicyIntake {
+  primary_affected?: string;
+  geography?: string;
+  time_horizon?: string;
+  mechanism?: string;
+  known_exclusions?: string;
+  enable_peer_review?: boolean;
 }
 
 // ── Stage2 animation entry ──────────────────────────────────────────────────

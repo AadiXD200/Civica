@@ -1,0 +1,159 @@
+{
+  "national": {
+    "union_coverage_pct": 29.4,
+    "gig_workers_pct": 8.2,
+    "youth_unemployment_pct": 11.3,
+    "overall_unemployment_pct": 5.8,
+    "participation_rate_pct": 65.5,
+    "median_hourly_wage": 28.70,
+    "avg_hourly_wage": 33.40,
+    "federal_minimum_wage": 17.30,
+    "self_employed_pct": 13.8,
+    "part_time_pct": 19.6,
+    "women_wage_gap_pct": 88.3,
+    "source": "StatsCan LFS 2024 Q1; StatsCan Table 14-10-0064-01"
+  },
+  "by_sector": {
+    "public_administration": {"union_coverage_pct": 71.2, "median_wage": 38.50},
+    "healthcare_social": {"union_coverage_pct": 54.1, "median_wage": 30.20},
+    "education": {"union_coverage_pct": 68.4, "median_wage": 35.80},
+    "construction": {"union_coverage_pct": 32.8, "median_wage": 34.10},
+    "manufacturing": {"union_coverage_pct": 26.3, "median_wage": 27.40},
+    "retail_trade": {"union_coverage_pct": 12.4, "median_wage": 18.60},
+    "accommodation_food": {"union_coverage_pct": 6.1, "median_wage": 16.90},
+    "information_culture": {"union_coverage_pct": 25.7, "median_wage": 38.20},
+    "professional_scientific": {"union_coverage_pct": 5.2, "median_wage": 40.80},
+    "source": "StatsCan LFS 2024; SEPH Table 14-10-0035-01"
+  },
+  "by_city": {
+    "Toronto": {
+      "unemployment_rate": 6.8,
+      "median_wage": 32.50,
+      "median_hourly_wage": 32.50,
+      "public_sector_pct": 22.1,
+      "union_coverage_pct": 27.8,
+      "tech_employment_pct": 9.2,
+      "source": "StatsCan LFS 2024 CMA estimates"
+    },
+    "Montreal": {
+      "unemployment_rate": 6.2,
+      "median_wage": 28.80,
+      "median_hourly_wage": 28.80,
+      "public_sector_pct": 27.4,
+      "union_coverage_pct": 36.2,
+      "tech_employment_pct": 6.8,
+      "source": "StatsCan LFS 2024 CMA estimates"
+    },
+    "Vancouver": {
+      "unemployment_rate": 5.9,
+      "median_wage": 31.20,
+      "median_hourly_wage": 31.20,
+      "public_sector_pct": 24.8,
+      "union_coverage_pct": 26.4,
+      "tech_employment_pct": 8.9,
+      "source": "StatsCan LFS 2024 CMA estimates"
+    },
+    "Calgary": {
+      "unemployment_rate": 6.4,
+      "median_wage": 35.10,
+      "median_hourly_wage": 35.10,
+      "public_sector_pct": 18.6,
+      "union_coverage_pct": 22.1,
+      "oil_gas_employment_pct": 12.3,
+      "source": "StatsCan LFS 2024 CMA estimates"
+    },
+    "Edmonton": {
+      "unemployment_rate": 7.1,
+      "median_wage": 33.80,
+      "median_hourly_wage": 33.80,
+      "public_sector_pct": 24.2,
+      "union_coverage_pct": 28.3,
+      "oil_gas_employment_pct": 9.8,
+      "source": "StatsCan LFS 2024 CMA estimates"
+    },
+    "Ottawa": {
+      "unemployment_rate": 5.2,
+      "median_wage": 36.40,
+      "median_hourly_wage": 36.40,
+      "public_sector_pct": 38.9,
+      "union_coverage_pct": 42.6,
+      "federal_government_pct": 18.4,
+      "source": "StatsCan LFS 2024 CMA estimates"
+    },
+    "Winnipeg": {
+      "unemployment_rate": 5.5,
+      "median_wage": 27.90,
+      "median_hourly_wage": 27.90,
+      "public_sector_pct": 29.1,
+      "union_coverage_pct": 33.8,
+      "source": "StatsCan LFS 2024 CMA estimates"
+    },
+    "Hamilton": {
+      "unemployment_rate": 6.9,
+      "median_wage": 27.60,
+      "median_hourly_wage": 27.60,
+      "public_sector_pct": 24.5,
+      "union_coverage_pct": 29.2,
+      "manufacturing_pct": 14.8,
+      "notes": "manufacturing share estimated from 2021 NHS"
+    },
+    "Halifax": {
+      "unemployment_rate": 6.1,
+      "median_wage": 27.30,
+      "median_hourly_wage": 27.30,
+      "public_sector_pct": 31.2,
+      "union_coverage_pct": 31.4,
+      "source": "StatsCan LFS 2024 CMA estimates"
+    },
+    "Victoria": {
+      "unemployment_rate": 4.8,
+      "median_wage": 30.10,
+      "median_hourly_wage": 30.10,
+      "public_sector_pct": 35.6,
+      "union_coverage_pct": 36.9,
+      "notes": "high public sector share due to BC provincial government presence"
+    },
+    "Kitchener": {
+      "unemployment_rate": 6.3,
+      "median_wage": 30.20,
+      "median_hourly_wage": 30.20,
+      "public_sector_pct": 20.1,
+      "union_coverage_pct": 24.8,
+      "tech_employment_pct": 7.6,
+      "notes": "Waterloo tech corridor data estimated from 2021 NHS"
+    },
+    "Saskatoon": {
+      "unemployment_rate": 5.8,
+      "median_wage": 28.50,
+      "median_hourly_wage": 28.50,
+      "public_sector_pct": 27.8,
+      "union_coverage_pct": 29.4,
+      "notes": "estimated from StatsCan LFS provincial breakdown"
+    },
+    "Regina": {
+      "unemployment_rate": 5.6,
+      "median_wage": 29.80,
+      "median_hourly_wage": 29.80,
+      "public_sector_pct": 33.1,
+      "union_coverage_pct": 34.2,
+      "notes": "estimated from StatsCan LFS provincial breakdown"
+    }
+  },
+  "minimum_wages_by_province": {
+    "AB": 15.00,
+    "BC": 17.40,
+    "MB": 15.30,
+    "NB": 15.30,
+    "NL": 15.60,
+    "NS": 15.20,
+    "NT": 16.05,
+    "NU": 16.00,
+    "ON": 16.55,
+    "PE": 15.40,
+    "QC": 15.75,
+    "SK": 14.00,
+    "YT": 17.59,
+    "federal": 17.30,
+    "source": "Provincial Labour Ministries 2024"
+  }
+}

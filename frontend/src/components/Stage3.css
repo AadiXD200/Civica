@@ -1542,3 +1542,300 @@
   color: var(--text-muted);
 }
 
+
+/* ── Primary Population Gap Notice ────────────────────────────────────────── */
+
+.primary-pop-gap-notice {
+  margin: 1rem 0 1.5rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--signal-mixed);
+  border-left-color: var(--signal-mixed);
+}
+
+.pop-gap-raw-counts {
+  opacity: 0.7;
+  font-size: 0.75rem;
+}
+
+/* ── Institutional Panel ──────────────────────────────────────────────────── */
+
+.section-institutional-panel {
+  margin-bottom: 2.5rem;
+}
+
+.institutional-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.inst-actor-card {
+  background: var(--bg-card, #1a1a1a);
+  border: 1px solid var(--border-subtle);
+  padding: 0.9rem 1rem;
+  font-family: var(--font-mono);
+}
+
+.inst-actor-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.inst-label {
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  line-height: 1.3;
+  flex: 1;
+}
+
+.inst-stance-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  padding: 2px 6px;
+  border: 1px solid currentColor;
+  opacity: 0.85;
+}
+
+.inst-key-concern {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-bottom: 0.5rem;
+  font-style: italic;
+}
+
+.inst-meta {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.inst-meta-item {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.inst-response {
+  color: var(--accent-blue, #4a9eff);
+}
+
+/* ── Peer Review ──────────────────────────────────────────────────────────── */
+
+.section-peer-review {
+  margin-bottom: 2.5rem;
+}
+
+.peer-panel-summary {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  border-left: 2px solid var(--border-sharp);
+}
+
+.peer-summary-label {
+  color: var(--signal-mixed);
+  font-weight: 600;
+}
+
+.peer-critiques-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+}
+
+.peer-critique-card {
+  background: var(--bg-card, #1a1a1a);
+  border: 1px solid var(--border-subtle);
+  padding: 0.85rem 1rem;
+  font-family: var(--font-mono);
+}
+
+.peer-critique-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.peer-risk-index {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.peer-risk-title {
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 120px;
+}
+
+.peer-verdict-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border: 1px solid currentColor;
+}
+
+.peer-adj-badge {
+  font-size: 0.65rem;
+  color: var(--signal-mixed);
+  border: 1px solid var(--signal-mixed);
+  padding: 2px 5px;
+}
+
+.peer-dup-badge {
+  font-size: 0.65rem;
+  color: var(--signal-negative);
+  border: 1px solid var(--signal-negative);
+  padding: 2px 5px;
+}
+
+.peer-critique-text {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 0.4rem;
+}
+
+.peer-revision {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 0.4rem;
+}
+
+.peer-revision-label {
+  text-transform: uppercase;
+  font-size: 0.6rem;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-right: 0.3rem;
+}
+
+/* ── Fiscal Scorecard ─────────────────────────────────────────────────────── */
+
+.fiscal-scorecard {
+  font-family: var(--font-mono);
+}
+
+.fiscal-top-line {
+  display: flex;
+  gap: 3rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.fiscal-top-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.fiscal-top-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.fiscal-top-value {
+  font-size: 1.4rem;
+  letter-spacing: 0.04em;
+}
+
+.fiscal-net-label {
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.fiscal-section {
+  margin-bottom: 1rem;
+}
+
+.fiscal-section-title {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.fiscal-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.fiscal-item-name {
+  flex: 1;
+  color: var(--text-primary);
+  min-width: 12rem;
+}
+
+.fiscal-item-source {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  padding: 0.1rem 0.35rem;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.fiscal-item-amount {
+  font-size: 0.85rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.fiscal-certainty {
+  font-size: 0.7rem;
+  opacity: 0.6;
+}
+
+.fiscal-unquantified {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  padding: 0.2rem 0;
+}
+
+.fiscal-unquantified-inline {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-style: italic;
+  letter-spacing: 0.04em;
+}
+
+.fiscal-caveats {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-top: 0.75rem;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 0.5rem;
+}

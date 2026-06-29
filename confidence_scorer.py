@@ -1,8 +1,38 @@
+DOMAIN_DATA_FIELDS = {
+    "housing":     "avg_rent_1br",
+    "transit":     "transit_mode_share_pct",
+    "healthcare":  "unemployment_rate",
+    "climate":     "unemployment_rate",
+    "labour":      "unemployment_rate",
+    "fiscal":      "median_household_income",
+    "education":   "median_household_income",
+    "immigration": "unemployment_rate",
+    "ai":          "unemployment_rate",
+    "corrections": "unemployment_rate",
+    "other":       "unemployment_rate",
+}
+
+DOMAIN_DATA_QUALITY = {
+    "housing":     "pass",   # richest StatsCan/CMHC data
+    "transit":     "pass",   # NHS 2021 mode share data available
+    "labour":      "pass",   # LFS data available by CMA
+    "climate":     "warn",   # provincial-level only
+    "healthcare":  "warn",   # CIHI provincial only
+    "fiscal":      "warn",   # national aggregates
+    "immigration": "warn",   # IMDB has gaps
+    "education":   "warn",   # partial CMA coverage
+    "ai":          "warn",   # limited StatsCan coverage
+    "corrections": "warn",   # CSC/Correctional Investigator aggregate data only
+    "other":       "warn",
+}
+
+
 def calculate_confidence(
     policy_classification: dict,
     city_profiles: dict,
     specialist_results: list,
-    validator_results: list
+    validator_results: list,
+    domain: str = "housing",
 ) -> dict:
     """
     Calculates simulation confidence score with a structured breakdown.
@@ -14,25 +44,27 @@ def calculate_confidence(
 
     # ── Data coverage ─────────────────────────────────────────────────────────
 
-    cities_with_data = sum(1 for v in city_profiles.values() if v.get("avg_rent_1br"))
+    # Use the domain-appropriate field to assess city data coverage
+    domain_field = DOMAIN_DATA_FIELDS.get(domain, "unemployment_rate")
+    cities_with_data = sum(1 for v in city_profiles.values() if v.get(domain_field))
     total_cities = len(city_profiles)
     max_score += 2
     if cities_with_data >= 18:
         score += 2
-        checks.append({"status": "pass", "label": f"City data coverage: {cities_with_data}/{total_cities} cities have full StatsCan data"})
+        checks.append({"status": "pass", "label": f"City data coverage: {cities_with_data}/{total_cities} cities have full StatsCan data ({domain_field})"})
     elif cities_with_data >= 12:
         score += 1
-        checks.append({"status": "warn", "label": f"Partial city data: {cities_with_data}/{total_cities} cities have StatsCan data"})
+        checks.append({"status": "warn", "label": f"Partial city data: {cities_with_data}/{total_cities} cities have StatsCan data ({domain_field})"})
     else:
-        checks.append({"status": "fail", "label": f"Thin city data: only {cities_with_data}/{total_cities} cities have StatsCan data"})
+        checks.append({"status": "fail", "label": f"Thin city data: only {cities_with_data}/{total_cities} cities have StatsCan data ({domain_field})"})
 
-    is_housing = policy_classification.get("market") != "non_housing"
+    domain_quality = DOMAIN_DATA_QUALITY.get(domain, "warn")
     max_score += 1
-    if is_housing:
+    if domain_quality == "pass":
         score += 1
-        checks.append({"status": "pass", "label": "Policy type: housing/urban — strongest StatsCan data coverage"})
+        checks.append({"status": "pass", "label": f"Policy domain: {domain} — strong StatsCan data coverage available"})
     else:
-        checks.append({"status": "warn", "label": "Policy type: non-housing — StatsCan data coverage is thinner for this domain"})
+        checks.append({"status": "warn", "label": f"Policy domain: {domain} — StatsCan data coverage is partial for this domain (provincial or aggregate level only)"})
 
     # ── Specialist signal ─────────────────────────────────────────────────────
 
@@ -100,6 +132,13 @@ def calculate_confidence(
         checks.append({"status": "warn", "label": f"Moderate demographic confirmation: {validators_confirming}/{total_validators} validators confirmed risks"})
     else:
         checks.append({"status": "fail", "label": f"Low demographic confirmation: only {validators_confirming}/{total_validators} validators confirmed any risk"})
+
+    risk_counts = [len(v.get("validations", [])) for v in validator_results if v.get("validations")]
+    if risk_counts:
+        min_risks = min(risk_counts)
+        max_risks = max(risk_counts)
+        if max_risks - min_risks > 2:
+            checks.append({"status": "info", "label": f"Validator scope variance: validators assessed {min_risks}–{max_risks} risks (geographic scoping excluded out-of-area validators from some risks)"})
 
     # ── Demographic diversity of confirmations ────────────────────────────────
 
@@ -171,6 +210,52 @@ def calculate_confidence(
     else:
         checks.append({"status": "warn", "label": f"Low persona calibration: only {calibrated}/{total_validators} validators had microdata profiles — persona layer may not have run"})
 
+    # ── Primary population coverage ──────────────────────────────────────────
+    # For non-housing domains, check whether domain-injected personas are present.
+    # A panel of 50 housing-tenure validators measuring spillover effects on a corrections
+    # or healthcare policy cannot claim the same coverage quality as one with domain personas.
+    _housing_domains = {"housing", "rent_control", "zoning", "supply", "tenant_protection", "environment"}
+    _is_housing = domain.lower() in _housing_domains
+    domain_persona_count = sum(1 for v in validator_results if v.get("domain_persona"))
+    max_score += 1
+    if _is_housing:
+        score += 1
+        checks.append({"status": "pass", "label": "Primary population coverage: housing domain — panel is drawn from the directly affected tenure population"})
+    elif domain_persona_count >= 10:
+        score += 1
+        checks.append({"status": "pass", "label": f"Primary population coverage: {domain_persona_count}/50 domain-specific personas injected — primary affected group represented"})
+    elif domain_persona_count > 0:
+        checks.append({"status": "warn", "label": f"Partial primary population coverage: only {domain_persona_count}/50 domain-specific personas injected — panel skews toward housing-tenure bystanders, not primary affected group"})
+    else:
+        checks.append({"status": "fail", "label": f"Primary population gap: no domain-specific personas for this {domain} policy — panel measures housing-tenure spillover only, not effects on the primary affected group"})
+
+    # ── Jurisdiction / feasibility ───────────────────────────────────────────
+    # Flag when policy appears to require provincial cooperation.
+    # This is a WARN-only check (no max_score contribution) — it doesn't reduce
+    # confidence mechanically, but surfaces the gap for the analyst.
+    _JURISDICTION_CRITICAL_DOMAINS_CS = {
+        "housing", "healthcare", "transit", "education", "labour", "immigration",
+    }
+    _JURISDICTION_TRIGGERS_CS = [
+        "provincial", "health authority", "federal-provincial", "opt-out", "opt out",
+        "canada health act", "hospital", "school board", "municipal", "crown land",
+        "section 92", "natural resources",
+    ]
+    if domain in _JURISDICTION_CRITICAL_DOMAINS_CS:
+        # Infer policy text from specialist findings (we don't have direct access here)
+        # Check if the Policy Critic raised jurisdiction concerns in their analysis
+        critic_raised_jurisdiction = False
+        for sr in specialist_results:
+            if sr.get("specialist") in ("policy_critic", "Policy Critic"):
+                analysis = (sr.get("analysis") or "").lower()
+                if any(t in analysis for t in ["provincial", "jurisdiction", "federal-provincial", "opt-out", "opt out", "province refuse"]):
+                    critic_raised_jurisdiction = True
+                    break
+        if critic_raised_jurisdiction:
+            checks.append({"status": "warn", "label": f"Jurisdiction risk: Policy Critic identified federal-provincial boundary issues for this {domain} policy — provincial opt-out or non-cooperation could reduce effective coverage"})
+        else:
+            checks.append({"status": "info", "label": f"Jurisdiction note: {domain} policies often require provincial cooperation — confirm Policy Critic assessment covered this dimension"})
+
     # ── Demographic tension detection ─────────────────────────────────────────
 
     fragile_high = sum(
@@ -186,12 +271,18 @@ def calculate_confidence(
 
     # ── Final score ───────────────────────────────────────────────────────────
 
-    final_score = max(1, min(max_score, score))
+    # Deduct 0.5 per WARN, 1.0 per FAIL — FAILs represent structural gaps that
+    # cannot be partially compensated by other passing checks.
+    warn_deductions = sum(0.5 for c in checks if c["status"] == "warn")
+    fail_deductions = sum(1.0 for c in checks if c["status"] == "fail")
+    score = max(0, score - warn_deductions - fail_deductions)
+
+    final_score = round(max(1, min(max_score, score)))
     pct = final_score / max_score
 
-    if pct >= 0.85:
+    if pct >= 0.80:
         summary = "High confidence — strong data coverage, full specialist and validator participation"
-    elif pct >= 0.65:
+    elif pct >= 0.60:
         summary = "Moderate confidence — most checks passed, some data or coverage gaps"
     else:
         summary = "Lower confidence — significant gaps in data coverage or validator participation"

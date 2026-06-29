@@ -16,6 +16,14 @@ def _load_docs():
     return _DOCS
 
 
+_NON_HOUSING_DOMAINS = {
+    "ai", "technology", "digital", "labour", "employment", "healthcare", "health",
+    "pharma", "pharmacare", "environment", "climate", "carbon", "energy", "transit",
+    "infrastructure", "transportation", "corrections", "justice", "criminal_justice",
+    "education", "immigration", "fiscal",
+}
+
+
 def get_relevant_docs(specialist_categories: list[str], policy_classification: dict, max_docs: int = 4, include_ai: bool = True) -> list[dict]:
     """
     Returns the most relevant documents for a specialist given their domain
@@ -23,10 +31,14 @@ def get_relevant_docs(specialist_categories: list[str], policy_classification: d
     """
     docs = _load_docs()
 
+    policy_domain = (policy_classification.get("domain") or "housing").lower()
+    is_non_housing = policy_domain in _NON_HOUSING_DOMAINS
+
     # Build a relevance set: specialist categories + policy type topics
     relevant_topics = set(specialist_categories)
-    if policy_classification.get("market") != "non_housing":
-        relevant_topics.add("housing")
+    domain = policy_classification.get("domain", "")
+    if domain:
+        relevant_topics.add(domain)
     if policy_classification.get("primary_affected"):
         affected = policy_classification["primary_affected"].lower()
         if "immigrant" in affected or "immigration" in affected:
@@ -45,6 +57,10 @@ def get_relevant_docs(specialist_categories: list[str], policy_classification: d
     scored = []
     for doc in docs:
         doc_topics = set(doc.get("topics", []))
+        # For non-housing policies, exclude docs whose primary topic is housing
+        # (i.e. "housing" is their only or first topic) — they'll contaminate findings.
+        if is_non_housing and "housing" in doc_topics and len(doc_topics - {"housing"}) == 0:
+            continue  # purely housing doc — irrelevant to this domain
         overlap = len(doc_topics & relevant_topics)
         if overlap > 0:
             scored.append((overlap, doc))

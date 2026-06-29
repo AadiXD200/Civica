@@ -1,0 +1,99 @@
+{
+  "national": {
+    "carbon_price_per_tonne_2024": 65,
+    "carbon_price_per_tonne_2030_target": 170,
+    "avg_household_carbon_cost_annual": 800,
+    "carbon_rebate_avg_annual": 1050,
+    "net_benefit_avg_household": 250,
+    "ghg_emissions_mt_co2e_2022": 708,
+    "ghg_target_2030_pct_below_2005": 40,
+    "ghg_2005_baseline_mt": 732,
+    "clean_electricity_pct_2023": 84,
+    "ev_sales_share_pct_2023": 11.4,
+    "emissions_by_sector_pct": {
+      "transport": 24,
+      "oil_gas": 28,
+      "buildings": 13,
+      "industry": 11,
+      "agriculture": 10,
+      "electricity": 8,
+      "other": 6
+    },
+    "source": "Environment and Climate Change Canada NIR 2024; CER 2023"
+  },
+  "carbon_rebate_by_province": {
+    "AB": {"single_adult": 900, "family_of_four": 1800, "notes": "Alberta Climate Action Incentive 2024"},
+    "SK": {"single_adult": 752, "family_of_four": 1504},
+    "MB": {"single_adult": 548, "family_of_four": 1096},
+    "ON": {"single_adult": 488, "family_of_four": 976},
+    "NS": {"single_adult": 248, "family_of_four": 496},
+    "PEI": {"single_adult": 240, "family_of_four": 480},
+    "NB": {"single_adult": 380, "family_of_four": 760},
+    "NL": {"single_adult": 328, "family_of_four": 656},
+    "source": "Canada Revenue Agency CAI Payment 2024"
+  },
+  "by_province": {
+    "AB": {
+      "emissions_per_capita_tco2e": 67.4,
+      "oil_gas_employment_pct": 8.2,
+      "coal_power_pct": 0,
+      "clean_electricity_pct": 26,
+      "methane_regulations_status": "provincial equivalency agreement",
+      "source": "ECCC Provincial GHG Inventory 2022; StatsCan LFS 2023"
+    },
+    "BC": {
+      "emissions_per_capita_tco2e": 13.2,
+      "oil_gas_employment_pct": 2.1,
+      "clean_electricity_pct": 98,
+      "provincial_carbon_price": 65,
+      "source": "ECCC 2022; BC Stats 2023"
+    },
+    "ON": {
+      "emissions_per_capita_tco2e": 10.1,
+      "oil_gas_employment_pct": 0.4,
+      "clean_electricity_pct": 92,
+      "nuclear_pct": 57,
+      "source": "ECCC 2022; IESO 2023"
+    },
+    "QC": {
+      "emissions_per_capita_tco2e": 9.3,
+      "oil_gas_employment_pct": 0.2,
+      "clean_electricity_pct": 99,
+      "cap_and_trade_price_2023": 46,
+      "source": "ECCC 2022; MELCCFP 2023"
+    },
+    "SK": {
+      "emissions_per_capita_tco2e": 68.8,
+      "oil_gas_employment_pct": 6.1,
+      "coal_power_pct": 35,
+      "clean_electricity_pct": 28,
+      "notes": "coal phase-out timeline under negotiation with federal government"
+    },
+    "MB": {
+      "emissions_per_capita_tco2e": 16.3,
+      "oil_gas_employment_pct": 0.8,
+      "clean_electricity_pct": 97,
+      "hydro_pct": 96,
+      "source": "ECCC 2022; Manitoba Hydro 2023"
+    },
+    "NS": {
+      "emissions_per_capita_tco2e": 15.8,
+      "coal_power_pct": 42,
+      "clean_electricity_target_year": 2030,
+      "notes": "coal phase-out by 2030 committed; ECCC 2022"
+    },
+    "NB": {
+      "emissions_per_capita_tco2e": 17.4,
+      "nuclear_pct": 32,
+      "clean_electricity_pct": 58,
+      "source": "ECCC 2022; NB Power 2023"
+    }
+  },
+  "clean_economy": {
+    "clean_tech_jobs_2022": 322000,
+    "green_bond_issuances_2023_billions": 8.7,
+    "federal_clean_economy_investment_ira_response_billions": 83,
+    "ev_charging_stations_national": 24000,
+    "source": "Natural Resources Canada 2023; Budget 2023"
+  }
+}

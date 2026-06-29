@@ -58,6 +58,7 @@ app.add_middleware(
 
 class PolicyRequest(BaseModel):
     policy: str
+    enable_peer_review: bool = False
 
 
 @app.post("/simulate")
@@ -70,7 +71,7 @@ async def simulate(body: PolicyRequest):
 
     async def run():
         try:
-            await run_simulation(body.policy, event_queue=queue)
+            await run_simulation(body.policy, event_queue=queue, enable_peer_review=body.enable_peer_review)
         except Exception as e:
             await queue.put({"type": "error", "message": str(e)})
         finally:

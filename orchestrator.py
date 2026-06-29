@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import json
 import os
 import time
@@ -11,6 +12,9 @@ from data_pipeline import load_city_profiles
 from policy_classifier import classify_policy
 from confidence_scorer import calculate_confidence
 from forward_validator import seal_simulation
+from fiscal_scorecard import run_fiscal_scorecard
+from institutional_panel import get_institutional_personas, generate_institutional_personas, run_institutional_validation, build_institutional_summary_block
+from peer_reviewer import run_peer_review, build_peer_review_block
 from specialist_calibrator import calibrate_specialist_prompt, get_specialist_relevance
 from benefits_analyzer import run_benefits_analysis, aggregate_benefits
 from persona_calibrator import format_persona_for_prompt, build_cohort_summary
@@ -19,6 +23,16 @@ from tension_detector import run_tension_detection
 import pumf_matcher
 
 load_dotenv()
+
+
+def _compute_panel_version(agents: list) -> str:
+    """Stable hash of panel composition — same agents in any order → same ID."""
+    fingerprints = sorted(
+        f"{a.get('agent_id','')}:{a.get('tenure','')}:{a.get('city','')}:{a.get('income_bracket','')}:{a.get('age_bracket','')}:{a.get('domain_persona', False)}"
+        for a in agents
+    )
+    return hashlib.md5("\n".join(fingerprints).encode()).hexdigest()[:10]
+
 
 BACKBOARD_API_KEY = os.getenv("BACKBOARD_API_KEY", "")
 SPECIALIST_PROVIDER = "openai"
@@ -106,6 +120,112 @@ SPECIALISTS = [
         "categories": ["displacement", "affordability"],
     },
 ]
+
+# ── Domain-specific specialist rosters ───────────────────────────────────────
+# Keyed by domain string returned by classify_policy.
+# Each list is exactly 8 specialists to keep concurrency uniform.
+
+_DOMAIN_SPECIALISTS: dict[str, list[dict]] = {
+    "healthcare": [
+        {"id": "health_economist", "title": "Health Economist", "focus": "Healthcare financing, drug pricing, insurance market dynamics, cost-effectiveness of public vs private coverage, out-of-pocket expenditure impacts", "categories": ["fiscal", "affordability"]},
+        {"id": "pharmacist_analyst", "title": "Pharmacist & Drug Supply Analyst", "focus": "Formulary design, drug supply chains, generic vs brand substitution, dispensing fee impacts, pharmacy business models", "categories": ["infrastructure", "employment"]},
+        {"id": "provincial_relations", "title": "Federal-Provincial Relations Expert", "focus": "Constitutional jurisdiction, opt-out mechanics, asymmetric agreements, transfer conditions, intergovernmental negotiations", "categories": ["geographic", "fiscal"]},
+        {"id": "social_equity_researcher", "title": "Social Equity Researcher", "focus": "Access gaps by income, geography, and immigration status; Indigenous health disparities; chronic disease burden in vulnerable populations", "categories": ["equity", "displacement"]},
+        {"id": "labour_market_analyst", "title": "Labour Market Analyst", "focus": "Impacts on healthcare workforce: nursing, pharmacy, administrative staff; employer drug benefit displacement; gig worker coverage gaps", "categories": ["employment"]},
+        {"id": "insurance_industry_analyst", "title": "Private Insurance Industry Analyst", "focus": "Private insurer market displacement, employer plan transition costs, supplementary coverage market, industry restructuring", "categories": ["fiscal", "affordability"]},
+        {"id": "regional_development_analyst", "title": "Regional & Rural Health Analyst", "focus": "Rural and remote access to formulary drugs, pharmacy deserts, telemedicine integration, northern community supply chains", "categories": ["geographic", "equity"]},
+        {"id": "policy_critic", "title": "Policy Critic", "focus": "Implementation risks, moral hazard, formulary limitations, political feasibility, unintended consequences, opt-out incentive structures", "categories": ["fiscal", "equity"]},
+    ],
+    "labour": [
+        {"id": "labor_economist", "title": "Labor Economist", "focus": "Wage floors, employment elasticity, hours reduction, labor substitution, sector-specific impacts", "categories": ["employment"]},
+        {"id": "small_business_analyst", "title": "Small Business Analyst", "focus": "SME compliance costs, payroll impacts, thin-margin sectors (hospitality, retail, agriculture), hiring freezes", "categories": ["employment", "fiscal"]},
+        {"id": "automation_analyst", "title": "Automation & Technology Analyst", "focus": "Labour-saving technology adoption rates, capital-for-labour substitution, gig economy restructuring", "categories": ["employment", "timeline"]},
+        {"id": "social_equity_researcher", "title": "Social Equity Researcher", "focus": "Distributional impacts by income bracket, youth and newcomer employment, precarious work patterns", "categories": ["equity"]},
+        {"id": "fiscal_analyst", "title": "Fiscal Policy Analyst", "focus": "Government payroll tax revenue, EI and social transfer interactions, compliance enforcement costs", "categories": ["fiscal"]},
+        {"id": "regional_development_analyst", "title": "Regional Development Analyst", "focus": "Province-by-province labour market variation, rural employment, resource sector impacts", "categories": ["geographic", "equity"]},
+        {"id": "union_relations_analyst", "title": "Labour Relations Analyst", "focus": "Collective bargaining implications, union density effects, strike risk, sectoral wage compression", "categories": ["employment"]},
+        {"id": "policy_critic", "title": "Policy Critic", "focus": "Unintended employment effects, evasion mechanisms, enforcement gaps, constitutional labour jurisdiction", "categories": ["fiscal", "equity"]},
+    ],
+    "fiscal": [
+        {"id": "fiscal_analyst", "title": "Fiscal Policy Analyst", "focus": "Federal budget impacts, deficit financing, tax expenditure accounting, revenue projections", "categories": ["fiscal"]},
+        {"id": "tax_economist", "title": "Tax Economist", "focus": "Tax incidence, avoidance and evasion behavior, capital gains dynamics, corporate tax shifting", "categories": ["fiscal", "affordability"]},
+        {"id": "provincial_relations", "title": "Federal-Provincial Fiscal Expert", "focus": "Transfer payment structures, equalization formula impacts, shared-cost programs, fiscal federalism", "categories": ["fiscal", "geographic"]},
+        {"id": "labor_economist", "title": "Labor Economist", "focus": "Labour supply distortions from taxation, income effect on work hours, high-earner emigration", "categories": ["employment"]},
+        {"id": "social_equity_researcher", "title": "Social Equity Researcher", "focus": "Distributional analysis of tax burden and benefit incidence across income quintiles", "categories": ["equity"]},
+        {"id": "capital_markets_analyst", "title": "Capital Markets Analyst", "focus": "Investment incentive effects, business investment decisions, capital allocation, financial sector impacts", "categories": ["fiscal"]},
+        {"id": "regional_development_analyst", "title": "Regional Development Analyst", "focus": "Regional economic impacts, resource-dependent province exposure, interprovincial competitiveness", "categories": ["geographic"]},
+        {"id": "policy_critic", "title": "Policy Critic", "focus": "Revenue forecast reliability, behavioural response uncertainty, implementation complexity, international comparison", "categories": ["fiscal"]},
+    ],
+    "climate": [
+        {"id": "climate_economist", "title": "Climate & Energy Economist", "focus": "Carbon pricing efficiency, clean energy transition costs, stranded asset risk, green investment multipliers", "categories": ["fiscal", "affordability"]},
+        {"id": "fossil_fuel_analyst", "title": "Fossil Fuel Industry Analyst", "focus": "Oil & gas sector impacts, royalty revenue, Alberta fiscal exposure, export competitiveness", "categories": ["employment", "fiscal"]},
+        {"id": "clean_tech_analyst", "title": "Clean Technology Analyst", "focus": "Renewable energy deployment, EV adoption curves, grid modernization, cleantech job creation", "categories": ["employment", "infrastructure"]},
+        {"id": "social_equity_researcher", "title": "Social Equity Researcher", "focus": "Carbon cost burden on low-income households, rural heating costs, Indigenous resource rights", "categories": ["equity"]},
+        {"id": "regional_development_analyst", "title": "Regional Development Analyst", "focus": "Province-by-province energy mix variation, resource community transition, northern infrastructure", "categories": ["geographic", "equity"]},
+        {"id": "urban_planner", "title": "Urban & Buildings Analyst", "focus": "Building retrofit mandates, urban heat island, transit electrification, zoning for density", "categories": ["infrastructure"]},
+        {"id": "fiscal_analyst", "title": "Fiscal Policy Analyst", "focus": "Carbon revenue recycling, federal-provincial transfer interactions, green bond financing", "categories": ["fiscal"]},
+        {"id": "policy_critic", "title": "Policy Critic", "focus": "Competitiveness leakage, carbon border adjustment feasibility, political durability, measurement and enforcement", "categories": ["fiscal", "geographic"]},
+    ],
+    "immigration": [
+        {"id": "immigration_economist", "title": "Immigration Economist", "focus": "Immigrant labour market integration, wage complementarity vs competition, credential recognition gaps", "categories": ["employment", "affordability"]},
+        {"id": "housing_economist", "title": "Housing Market Economist", "focus": "Population-driven housing demand pressure, rental market tightening in gateway cities", "categories": ["affordability"]},
+        {"id": "social_equity_researcher", "title": "Social Equity Researcher", "focus": "Newcomer service access gaps, discrimination in hiring, refugee vs economic immigrant outcomes", "categories": ["equity"]},
+        {"id": "settlement_services_analyst", "title": "Settlement Services Analyst", "focus": "Language training capacity, settlement agency funding, integration program throughput", "categories": ["infrastructure", "equity"]},
+        {"id": "regional_development_analyst", "title": "Regional Development Analyst", "focus": "Rural immigration streams, regional nominee programs, small-city absorption capacity", "categories": ["geographic"]},
+        {"id": "fiscal_analyst", "title": "Fiscal Policy Analyst", "focus": "Net fiscal contribution of immigrants, transfer dependency, health and education cost projections", "categories": ["fiscal"]},
+        {"id": "provincial_relations", "title": "Federal-Provincial Relations Expert", "focus": "Provincial nominee programs, healthcare and education jurisdiction, asylum seeker cost-sharing", "categories": ["geographic", "fiscal"]},
+        {"id": "policy_critic", "title": "Policy Critic", "focus": "Processing backlogs, fraud risk, international treaty obligations, public opinion dynamics", "categories": ["equity", "fiscal"]},
+    ],
+    "education": [
+        {"id": "education_economist", "title": "Education Economist", "focus": "Returns to education, student debt burden, labour market signal value of credentials, skill mismatch", "categories": ["employment", "affordability"]},
+        {"id": "provincial_relations", "title": "Federal-Provincial Relations Expert", "focus": "Education jurisdiction, transfer conditions, provincial autonomy, curriculum standards", "categories": ["geographic", "fiscal"]},
+        {"id": "social_equity_researcher", "title": "Social Equity Researcher", "focus": "Access gaps by income and geography, Indigenous education outcomes, newcomer integration", "categories": ["equity"]},
+        {"id": "fiscal_analyst", "title": "Fiscal Policy Analyst", "focus": "Post-secondary funding models, tuition revenue, student loan default rates, public investment ROI", "categories": ["fiscal"]},
+        {"id": "labour_market_analyst", "title": "Labour Market Analyst", "focus": "Graduate employment outcomes, skilled trade shortages, credential inflation, employer upskilling", "categories": ["employment"]},
+        {"id": "regional_development_analyst", "title": "Regional Development Analyst", "focus": "Rural school consolidation, northern access, brain drain from small communities", "categories": ["geographic"]},
+        {"id": "technology_analyst", "title": "EdTech & Digital Learning Analyst", "focus": "Online learning scalability, digital divide, AI in education, infrastructure requirements", "categories": ["infrastructure", "equity"]},
+        {"id": "policy_critic", "title": "Policy Critic", "focus": "Implementation timelines, institutional resistance, credential devaluation risks, international student impacts", "categories": ["fiscal", "equity"]},
+    ],
+    "transit": [
+        {"id": "transit_economist", "title": "Transit & Mobility Economist", "focus": "Ridership demand elasticity, fare revenue, modal shift from car to transit, congestion pricing", "categories": ["affordability", "fiscal"]},
+        {"id": "urban_planner", "title": "Urban Planner", "focus": "Transit-oriented development, station area density, last-mile connectivity, land use integration", "categories": ["infrastructure", "geographic"]},
+        {"id": "fiscal_analyst", "title": "Fiscal Policy Analyst", "focus": "Capital cost financing, federal-provincial-municipal cost-sharing, P3 risk allocation, operating subsidies", "categories": ["fiscal"]},
+        {"id": "social_equity_researcher", "title": "Social Equity Researcher", "focus": "Transit access for low-income, seniors, and disabled riders; fare affordability; equity of service distribution", "categories": ["equity"]},
+        {"id": "regional_development_analyst", "title": "Regional Development Analyst", "focus": "Rural transit gaps, intercity connectivity, Indigenous community access, small-city service models", "categories": ["geographic", "equity"]},
+        {"id": "labour_market_analyst", "title": "Labour Market Analyst", "focus": "Transit operator workforce, construction jobs, commute time effects on labour supply", "categories": ["employment"]},
+        {"id": "climate_analyst", "title": "Climate & Emissions Analyst", "focus": "Vehicle emission reductions from modal shift, electrification of transit fleet, climate target contribution", "categories": ["infrastructure"]},
+        {"id": "policy_critic", "title": "Policy Critic", "focus": "Ridership projections reliability, construction overruns, political jurisdiction conflicts, displacement during construction", "categories": ["fiscal", "geographic"]},
+    ],
+    "ai": [
+        {"id": "ai_economist", "title": "AI & Automation Economist", "focus": "Labour displacement from AI, productivity gains, wage polarization, task-level automation exposure by occupation", "categories": ["employment", "affordability"]},
+        {"id": "technology_policy_analyst", "title": "Technology Policy Analyst", "focus": "AI governance frameworks, algorithmic accountability, data governance, international regulatory comparison", "categories": ["fiscal", "equity"]},
+        {"id": "social_equity_researcher", "title": "Social Equity Researcher", "focus": "Algorithmic bias, facial recognition disparities, AI-driven discrimination in hiring/lending/benefits", "categories": ["equity"]},
+        {"id": "privacy_analyst", "title": "Privacy & Data Rights Analyst", "focus": "Surveillance risks, data sovereignty, consent frameworks, PIPEDA reform implications", "categories": ["equity", "infrastructure"]},
+        {"id": "fiscal_analyst", "title": "Fiscal Policy Analyst", "focus": "Compliance costs for industry, government AI procurement, enforcement agency capacity", "categories": ["fiscal"]},
+        {"id": "innovation_analyst", "title": "Innovation & Competitiveness Analyst", "focus": "Canadian AI sector competitiveness, brain drain risk, startup burden, US/EU regulatory arbitrage", "categories": ["employment", "fiscal"]},
+        {"id": "regional_development_analyst", "title": "Regional Development Analyst", "focus": "Uneven AI adoption across regions, rural digital divide, resource sector AI use", "categories": ["geographic"]},
+        {"id": "policy_critic", "title": "Policy Critic", "focus": "Definitional ambiguity, enforcement gaps, innovation chilling effect, constitutional jurisdiction over private sector AI", "categories": ["fiscal", "equity"]},
+    ],
+    "corrections": [
+        {"id": "criminal_justice_economist", "title": "Criminal Justice Economist", "focus": "Incarceration costs, recidivism rates, cost-effectiveness of rehabilitation vs incarceration, public safety outcomes", "categories": ["fiscal"]},
+        {"id": "social_equity_researcher", "title": "Social Equity Researcher", "focus": "Racial and Indigenous overrepresentation, systemic bias, re-entry barriers, family impacts", "categories": ["equity"]},
+        {"id": "fiscal_analyst", "title": "Fiscal Policy Analyst", "focus": "Correctional service budgets, capital costs for facility expansion, provincial transfer payments", "categories": ["fiscal"]},
+        {"id": "labour_market_analyst", "title": "Labour Market Analyst", "focus": "Post-release employment barriers, correctional officer workforce, prison labour programs", "categories": ["employment"]},
+        {"id": "mental_health_analyst", "title": "Mental Health & Addictions Analyst", "focus": "Mental health burden in corrections, addiction treatment access, trauma-informed approaches", "categories": ["equity", "infrastructure"]},
+        {"id": "regional_development_analyst", "title": "Regional Development Analyst", "focus": "Rural facility siting, Indigenous community impact, northern access to legal services", "categories": ["geographic", "equity"]},
+        {"id": "provincial_relations", "title": "Federal-Provincial Relations Expert", "focus": "Jurisdictional split between federal and provincial corrections, transfer of offenders, parole board authority", "categories": ["geographic", "fiscal"]},
+        {"id": "policy_critic", "title": "Policy Critic", "focus": "Mandatory minimum evidence base, constitutional charter challenges, political feasibility, international human rights standards", "categories": ["equity", "fiscal"]},
+    ],
+}
+
+# Cross-cutting specialists always included for non-housing domains
+_ALWAYS_INCLUDE = {"social_equity_researcher", "fiscal_analyst", "regional_development_analyst", "policy_critic"}
+
+
+def get_specialists_for_domain(domain: str) -> list[dict]:
+    """Return the 8-specialist roster for a given domain, falling back to housing."""
+    domain = (domain or "housing").lower()
+    return _DOMAIN_SPECIALISTS.get(domain, SPECIALISTS)
 
 os.makedirs("cache", exist_ok=True)
 
@@ -217,6 +337,26 @@ def build_all_cities_summary():
 
 # --- Round 1: Domain specialist analysis (expensive model) ---
 
+def _filter_cities_summary(cities_summary: str, specialist: dict) -> str:
+    """
+    Non-regional specialists get a trimmed city summary — major urban centres only.
+    Regional/geographic specialists get the full summary including rural/remote.
+    This prevents every specialist from latching onto Nunavut/Northern Ontario as
+    a default rural-exclusion framing when it's not their analytical domain.
+    """
+    is_regional = any(c in specialist.get("categories", []) for c in ("geographic",)) or \
+        any(kw in specialist.get("id", "").lower() for kw in ("regional", "rural", "geographic", "northern", "remote"))
+    if is_regional:
+        return cities_summary
+    # Return only lines that don't mention rural/remote/reserve/nunavut/northern
+    _rural_markers = {"rural", "remote", "reserve", "nunavut", "northern"}
+    filtered = []
+    for line in cities_summary.splitlines():
+        if not any(m in line.lower() for m in _rural_markers):
+            filtered.append(line)
+    return "\n".join(filtered)
+
+
 async def call_specialist(client, thread_id, specialist, policy_text, policy_classification, cities_summary):
     ref_docs = get_relevant_docs(specialist["categories"], policy_classification)
     ref_block = format_docs_for_prompt(ref_docs)
@@ -227,6 +367,9 @@ async def call_specialist(client, thread_id, specialist, policy_text, policy_cla
     # Build citation list for the JSON schema (doc titles the model can reference)
     citation_options = [{"id": str(i+1), "title": d["title"], "url": d["url"]} for i, d in enumerate(ref_docs)]
 
+    # Non-regional specialists get urban-only city data to prevent rural-framing convergence
+    specialist_cities_summary = _filter_cities_summary(cities_summary, specialist)
+
     base_prompt = f"""You are a {specialist['title']} analyzing a Canadian government policy.
 
 Your domain: {specialist['focus']}
@@ -235,7 +378,7 @@ Policy: {policy_text}
 Policy classification: {json.dumps(policy_classification)}
 
 Real city data from Statistics Canada:
-{cities_summary}
+{specialist_cities_summary}
 
 {survey_block}
 
@@ -243,17 +386,30 @@ Real city data from Statistics Canada:
 
 {historical_block}
 
+CRITICAL INSTRUCTION — LENS DISCIPLINE:
+You are a {specialist['title']}. Every risk you identify MUST flow from YOUR SPECIFIC PROFESSIONAL LENS — not from a generic equity or access concern that any analyst could raise.
+Ask yourself: "What do I see from my specific vantage point that other specialists cannot?" If your finding could have been written by a generic policy analyst, it is not specific enough. Rewrite it from your exact domain perspective.
+
+Examples of lens discipline:
+- A "Parental Controls Analyst" must reason about the specific parental-attestation or override mechanics in the bill — not generic digital exclusion
+- A "Pharmaceutical Supply Chain Analyst" must reason about formulary logistics, dispensing, and distribution — not generic affordability
+- A "Labour Relations Analyst" must reason about collective agreement clauses, strike risk, and wage compression — not generic employment effects
+
 Before identifying any risks, do two things:
 1. State the policy's DIRECT MECHANISM in one sentence — what specific action does this policy require, prohibit, or create?
-2. Identify any BUILT-IN MITIGATION — does the policy contain a rebate, exemption, transition fund, phase-in, or offset that directly limits the harm you are about to flag? If yes, factor it into your severity score. A rebate that returns 90% of revenue changes the net impact. A 5-year new construction exemption changes who bears the cost. An income cap changes who can access the benefit. These are not footnotes — they are part of the mechanism.
+2. Identify any BUILT-IN MITIGATION — does the policy contain a rebate, exemption, transition fund, phase-in, or offset that directly limits the harm you are about to flag? If yes, factor it into your severity score.
 
-Only identify risks that are CAUSED or MATERIALLY WORSENED by this policy's specific mechanism — not pre-existing problems, not trends the policy touches on thematically, not second-order speculation more than 2 causal steps from the policy action. If the policy's own mitigation fully addresses a risk, do not flag it. If the mitigation is structurally insufficient (wrong scale, wrong group, wrong timing), flag the residual risk and explain why the mitigation falls short.
+DEDUPLICATION RULE: Before finalizing your findings, check: are any of your risks essentially the same causal chain described in different words? If two risks share the same mechanism and affected population, merge them into one. Do not submit more than one finding about "exclusion of vulnerable groups" or "compliance cost burden" — pick the most specific version and cut the rest.
 
-For TAX policies: always reason about TAX INCIDENCE before flagging a risk. Who legally pays the tax is not always who economically bears it. A tax on undeveloped land falls on landholders who don't build — not on buyers of future homes. A tax on short-term sales falls on investors who flip — not on renters. If you cannot trace a direct line from who pays the tax to who is harmed, do not flag it as a risk.
+CATEGORY DISCIPLINE: Use `geographic` ONLY if the primary risk mechanism is geographic — i.e. location itself determines who is harmed, not just that some places have fewer resources. Do not tag a risk `geographic` just because rural areas exist or because the policy affects multiple regions differently — that applies to almost every policy. If the real mechanism is affordability, label it `affordability`. If it's employment loss in a sector, label it `employment`. Reserve `geographic` for risks where someone's physical location is the direct cause of harm (e.g. no broadband → can't comply; remote → no alternative supplier).
 
-For time-limited policies (benefits, emergency programs, phase-ins): explicitly assess the CLIFF EFFECT — what happens when this policy ends or phases out? Abrupt withdrawal of income support, housing assistance, or market interventions often produces risks that are larger than the ongoing policy itself. If a cliff effect exists, flag it as a distinct risk with timeline "escalating".
+Only identify risks that are CAUSED or MATERIALLY WORSENED by this policy's specific mechanism — not pre-existing problems, not trends the policy touches on thematically, not second-order speculation more than 2 causal steps from the policy action.
 
-Identify 2-4 specific risks that this policy CREATES or WORSENS. For each risk, ground it in the real city data above. Reference specific numbers. Explain the economic mechanism — the causal chain from the policy's specific action to the negative outcome. Where possible, cite the reference documents and historical precedents provided above.
+For TAX policies: always reason about TAX INCIDENCE before flagging a risk. Who legally pays the tax is not always who economically bears it.
+
+For time-limited policies (benefits, emergency programs, phase-ins): explicitly assess the CLIFF EFFECT — what happens when this policy ends or phases out?
+
+Identify 2-4 specific risks that this policy CREATES or WORSENS. For each risk, ground it in the real city data above. Reference specific numbers. Explain the economic mechanism — the causal chain from the policy's specific action to the negative outcome.
 
 If historical precedent data is available above, include a "historical_precedent" field on the risk — one sentence referencing what happened in the comparable policy case. This is the most important credibility signal in the output.
 
@@ -329,22 +485,171 @@ Only use severity 3 if you would be comfortable defending it with specific popul
         return fallback
 
 
-async def run_specialists(client, asst_id, policy_text, policy_classification, pre_threads=None, cities_summary=None):
+async def generate_specialist_roster(client, asst_id, policy_text, policy_classification) -> list[dict]:
+    """Ask the LLM to generate 8 policy-specific specialists for this exact policy."""
+    prompt = f"""You are designing a policy risk analysis panel for a specific Canadian government policy.
+
+Policy: {policy_text}
+Classification: {json.dumps(policy_classification)}
+
+Generate exactly 8 specialist roles that cover DISTINCT analytical traditions for this policy.
+
+HARD RULES:
+1. Each specialist must come from a DIFFERENT analytical tradition. No two specialists may share a primary lens.
+   - BANNED: more than one specialist whose primary lens is equity/access/inclusion/rights/marginalization. One Social Equity Researcher covers that entire tradition — do not add "Digital Rights Analyst", "Youth Advocate", "Civil Rights Analyst", "Digital Literacy Analyst" etc. alongside it. These are the same lens.
+   - BANNED: more than one specialist whose primary lens is compliance cost or regulatory burden on business.
+   - BANNED: more than one specialist whose primary lens is rural/geographic access.
+2. The 8 slots must cover genuinely different risk dimensions. A good panel for an age-gating/screen-time policy would include slots like: legal/constitutional, platform economics, behavioural science, parental/family systems, enforcement/implementation, fiscal/compliance, regional, and equity — each a distinct tradition.
+3. Always include exactly one Policy Critic and exactly one Social Equity Researcher. The other 6 must be domain-specific technical roles, not variations on equity or access themes.
+4. Each specialist's focus must name a specific mechanism from THIS policy — not a general concern.
+
+For each specialist return:
+- id: snake_case unique identifier
+- title: professional title (e.g. "Platform Revenue Economist")
+- focus: one sentence on what they analyze — must reference the policy's specific mechanism
+- categories: list of 1-2 strings from [employment, fiscal, affordability, equity, displacement, infrastructure, geographic, timeline]
+
+Return only valid JSON with no markdown:
+{{
+  "specialists": [
+    {{"id": "...", "title": "...", "focus": "...", "categories": ["..."]}}
+  ]
+}}"""
+
+    try:
+        thread = await client.create_thread(asst_id)
+        response = await client.add_message(
+            thread_id=thread.thread_id,
+            content=prompt,
+            llm_provider=COORDINATOR_PROVIDER,
+            model_name=COORDINATOR_MODEL,
+            stream=False,
+        )
+        raw = response.content.strip().replace("```json", "").replace("```", "").strip()
+        parsed = json.loads(raw)
+        specialists = parsed.get("specialists", [])
+        if len(specialists) == 8:
+            log(f"  Generated specialist roster: {[s['title'] for s in specialists]}")
+            return specialists
+    except Exception as e:
+        log(f"  Specialist generation failed ({e}), falling back to domain lookup")
+
+    # Fallback to domain lookup
+    domain = (policy_classification or {}).get("type", "housing")
+    return get_specialists_for_domain(domain)
+
+
+async def generate_validator_personas(client, asst_id, policy_text, policy_classification, n: int = 15) -> list[dict]:
+    """Ask the LLM to generate n domain-specific validator personas for this policy."""
+
+    # Derive explicit persona quotas so the LLM doesn't default to generic adult spread
+    policy_type = (policy_classification or {}).get("type", "")
+    domain_label = (policy_classification or {}).get("domain_label", policy_type)
+    key_attrs = " ".join((policy_classification or {}).get("key_attributes", [])).lower()
+
+    is_youth_policy = any(kw in (policy_text + key_attrs).lower() for kw in
+        {"age verification", "age gating", "minor", "under 16", "under 18", "youth", "screen time", "parental consent", "children"})
+    is_elder_policy = any(kw in (policy_text + key_attrs).lower() for kw in
+        {"seniors", "elder", "long-term care", "retirement", "pension", "dementia", "aging"})
+    is_worker_policy = any(kw in (policy_text + key_attrs).lower() for kw in
+        {"minimum wage", "gig worker", "labour", "employment insurance", "union", "collective bargaining"})
+
+    if is_youth_policy:
+        quota_instruction = f"""MANDATORY PERSONA DISTRIBUTION for this youth/age-gating policy (must sum to {n}):
+- {n//2} personas aged 18-24 (young adults directly affected as near-minor users, or as older siblings/peers of minors)
+- {n//4} personas aged 25-34 (parents of minors, early-career adults with children)
+- {n//4} personas aged 35-49 (parents of teenagers, guardians navigating consent requirements)
+Zero personas aged 50-64 or 65+. This policy's primary affected population is youth and parents of youth — not retirees."""
+    elif is_elder_policy:
+        quota_instruction = f"""MANDATORY PERSONA DISTRIBUTION for this seniors/elder policy (must sum to {n}):
+- {n//2} personas aged 65+ (primary affected population)
+- {n//4} personas aged 50-64 (approaching retirement, caregivers for aging parents)
+- {n//4} personas aged 35-49 (adult children managing elder care)"""
+    elif is_worker_policy:
+        quota_instruction = f"""MANDATORY PERSONA DISTRIBUTION for this labour/worker policy (must sum to {n}):
+- {n//2} personas in gig/self_employed/hourly employment (primary affected workers)
+- {n//4} personas aged 18-24 (young workers most exposed to wage floors and gig economy)
+- {n//4} personas as small business owners or salaried workers affected by cost pass-through"""
+    else:
+        quota_instruction = f"""Distribute {n} personas across the demographics MOST DIRECTLY affected by this specific policy's mechanism. Do not default to a generic Canadian spread — think about who this policy actually touches first."""
+
+    prompt = f"""You are designing demographic validator personas for a Canadian policy risk simulation.
+
+Policy: {policy_text}
+Classification: {json.dumps(policy_classification)}
+
+{quota_instruction}
+
+These personas represent people who will DIRECTLY feel the effects — not bystanders who are vaguely concerned.
+Each persona's domain_role and domain_context must describe their specific relationship to THIS policy's mechanism.
+
+Return only valid JSON with no markdown:
+{{
+  "personas": [
+    {{
+      "city": "Toronto",
+      "tenure": "renter",
+      "age_bracket": "18-24",
+      "income_bracket": "low",
+      "employment_type": "student",
+      "immigration_status": "born_here",
+      "family_size": "single",
+      "debt_load": "low",
+      "domain_role": "19-year-old university student and heavy TikTok/Instagram user",
+      "domain_context": "Uses social media 4h/day; turned 18 last year so technically exempt but younger friends face the verification barrier"
+    }}
+  ]
+}}
+
+age_bracket options: 18-24, 25-34, 35-49, 50-64, 65+
+income_bracket options: very_low, low, medium, high, very_high
+employment_type options: salaried, self_employed, gig, unemployed, retired, student
+immigration_status options: born_here, established_immigrant, recent_immigrant, non_permanent_resident
+family_size options: single, couple, small_family, large_family
+debt_load options: none, low, medium, high
+tenure options: renter, owner"""
+
+    try:
+        thread = await client.create_thread(asst_id)
+        response = await client.add_message(
+            thread_id=thread.thread_id,
+            content=prompt,
+            llm_provider=COORDINATOR_PROVIDER,
+            model_name=COORDINATOR_MODEL,
+            stream=False,
+        )
+        raw = response.content.strip().replace("```json", "").replace("```", "").strip()
+        parsed = json.loads(raw)
+        personas = parsed.get("personas", [])
+        if personas:
+            log(f"  Generated {len(personas)} domain validator personas: {[p.get('domain_role') for p in personas[:5]]}...")
+            return personas[:n]
+    except Exception as e:
+        log(f"  Validator persona generation failed ({e}), using PUMF-only panel")
+
+    return []
+
+
+async def run_specialists(client, asst_id, policy_text, policy_classification, pre_threads=None, cities_summary=None, specialists=None):
     """Run all domain specialists in parallel.
 
     Accepts pre_threads (already created in parallel with classify_policy) and
     a pre-built cities_summary to avoid redundant work.
     """
+    if specialists is None:
+        domain = (policy_classification or {}).get("type", "housing")
+        specialists = get_specialists_for_domain(domain)
+
     if cities_summary is None:
         cities_summary = build_all_cities_summary()
 
     if pre_threads is None:
-        pre_threads = await asyncio.gather(*[client.create_thread(asst_id) for _ in SPECIALISTS])
+        pre_threads = await asyncio.gather(*[client.create_thread(asst_id) for _ in specialists])
 
     results = await asyncio.gather(
         *[
             call_specialist(client, t.thread_id, s, policy_text, policy_classification, cities_summary)
-            for t, s in zip(pre_threads, SPECIALISTS)
+            for t, s in zip(pre_threads, specialists)
         ],
         return_exceptions=True,
     )
@@ -530,24 +835,49 @@ async def call_calibrate_and_validate(client, thread_id, agent, policy_text, val
         kw in " ".join(policy_classification.get("key_attributes", [])).lower()
         for kw in {"ai", "artificial_intelligence", "automation", "tech", "digital"}
     )
+    _housing_types = {"housing", "supply", "demand", "rent_control", "zoning", "tenant_protection"}
+    is_housing = policy_type in _housing_types
 
+    # Domain label — used in prompt framing so validator reasons from the right context
+    _DOMAIN_LABELS = {
+        "healthcare": "Canadian healthcare policy", "labour": "Canadian labour market policy",
+        "fiscal": "Canadian fiscal and tax policy", "climate": "Canadian climate and energy policy",
+        "environment": "Canadian climate and energy policy", "immigration": "Canadian immigration policy",
+        "education": "Canadian education policy", "transit": "Canadian transit policy",
+        "ai": "Canadian AI and technology governance policy", "corrections": "Canadian criminal justice policy",
+    }
+    domain_label = _DOMAIN_LABELS.get(policy_type, f"Canadian {policy_type} policy")
+
+    # Domain-injected persona context (for LLM-generated domain personas)
+    domain_role = agent.get("domain_role", "")
+    domain_context = agent.get("domain_context", "")
+    domain_persona_block = ""
+    if domain_role and domain_context:
+        domain_persona_block = f"\nYour specific role: {domain_role}\nYour situation: {domain_context}\nReason from THIS specific situation — not from generic demographic assumptions."
+
+    sector_profile = None
     if is_ai:
         sector_profile = infer_sector_profile(agent)
         context_block = format_sector_for_persona_prompt(sector_profile)
-        domain_label = "AI and technology governance"
         grounding_note = (
             "Based on the real StatsCan sector data above, ground your persona in this person's "
             "actual AI exposure and employment sector risk."
         )
-    else:
+    elif is_housing:
         cohort_summary = build_cohort_summary(agent, cohort_stats, policy_classification)
         context_block = f"Statistics Canada CHS 2022 microdata for this demographic cohort:\n{cohort_summary}"
-        domain_label = "Canadian housing policy"
         grounding_note = (
             "Based on the real CHS data above, ground your persona in this person's actual "
             "housing cost burden and financial fragility."
         )
-        sector_profile = None
+    else:
+        # Non-housing, non-AI: use city income/employment data as the grounding anchor
+        cohort_summary = build_cohort_summary(agent, cohort_stats, policy_classification)
+        context_block = f"Statistics Canada data for this demographic cohort:\n{cohort_summary}"
+        grounding_note = (
+            f"Ground your persona in how this person's income level, employment type, and city "
+            f"context makes them specifically exposed or insulated from this {policy_type} policy."
+        )
 
     prompt = f"""You are simulating a real Canadian demographic persona for a {domain_label} risk simulation.
 
@@ -559,7 +889,7 @@ Agent demographics:
 - Employment: {agent.get('employment_type')}
 - Family size: {agent.get('family_size')}
 - Immigration status: {agent.get('immigration_status')}
-- Debt load: {agent.get('debt_load')}
+- Debt load: {agent.get('debt_load')}{domain_persona_block}
 
 Real city data: {city_line}{age_income_line}
 
@@ -574,11 +904,12 @@ Specialist-identified risks:
 
 TASK: In a single response, do BOTH of the following:
 
-1. PERSONA: Characterize this person's behavioral profile based on the real data above.
-2. VALIDATION: As this person, assess which specialist risks actually affect them, given their real city data and circumstances.
+1. PERSONA: Characterize this person's behavioral profile based on the real data above. If a specific role and situation is given above, use it — do not substitute generic assumptions.
+2. VALIDATION: As this person, assess which specialist risks actually affect YOU, given your specific situation and city data. Your validation must be grounded in your actual demographic circumstances — not in what a generic person might experience.
 
-For the validation — does each risk ACTUALLY AFFECT someone with this specific profile and city data?
-For missed_risk — only flag a risk if: (1) NOT already covered above, (2) flows directly from THIS POLICY'S SPECIFIC MECHANISM — not a general life concern that exists regardless of this policy, (3) specifically affects THIS demographic profile, (4) you can explain WHY their age/tenure/income/employment/immigration makes them uniquely exposed to this policy's action. Housing affordability and mental health concerns are almost never valid missed_risks for non-housing policies — reject them unless there is a direct, named causal chain from this exact policy to that outcome.
+CRITICAL: Your reason for each validation must reference YOUR SPECIFIC SITUATION (your income, your employment, your family, your domain role if given). Generic answers like "this could affect vulnerable people" are rejected — you are one specific person, reason as them.
+
+For missed_risk — only flag a risk if: (1) NOT already covered above, (2) flows directly from THIS POLICY'S SPECIFIC MECHANISM, (3) specifically affects YOUR profile because of something particular about your age/employment/income/immigration status, (4) you can name the direct causal chain. Return null if uncertain.
 
 Return only valid JSON:
 {{
@@ -905,15 +1236,15 @@ def compute_severity_labels(risk_validations: list, validator_results: list, ben
     writes reasoning and titles but cannot change the numbers.
 
     Per-risk severity rules (in priority order):
-      HIGH   — raw_confirmed >= 30 AND avg_severity_confirmed >= 2.0
-             OR raw_confirmed >= 40 (regardless of severity — broad consensus)
-      LOW    — raw_confirmed < 10
+      HIGH   — raw_confirmed >= 35 AND avg_severity_confirmed >= 2.2
+             OR raw_confirmed >= 45 (near-unanimous consensus regardless of severity)
+      LOW    — raw_confirmed < 8
       MEDIUM — everything else
 
     Overall risk level:
       Take the top 3 risks by (raw_confirmed / total) × avg_severity_confirmed.
       Average those 3 scores.
-      HIGH   >= 0.45
+      HIGH   >= 0.60   (requires both broad confirmation AND high severity — not just one)
       LOW    <  0.15
       MEDIUM — everything else
 
@@ -929,9 +1260,9 @@ def compute_severity_labels(risk_validations: list, validator_results: list, ben
         raw = rv["validators_confirmed"]
         avg_sev = rv["avg_severity_confirmed"]
 
-        if raw >= 40 or (raw >= 30 and avg_sev >= 2.0):
+        if raw >= 45 or (raw >= 35 and avg_sev >= 2.2):
             sev = "HIGH"
-        elif raw < 10:
+        elif raw < 8:
             sev = "LOW"
         else:
             sev = "MEDIUM"
@@ -944,7 +1275,7 @@ def compute_severity_labels(risk_validations: list, validator_results: list, ben
     top3 = sorted(scores, reverse=True)[:3]
     avg_top3 = sum(top3) / max(len(top3), 1)
 
-    if avg_top3 >= 0.45:
+    if avg_top3 >= 0.60:
         overall = "HIGH"
     elif avg_top3 < 0.15:
         overall = "LOW"
@@ -967,7 +1298,7 @@ def compute_severity_labels(risk_validations: list, validator_results: list, ben
 
 # --- Coordinator: Risk synthesis ---
 
-def build_coordinator_prompt(policy_text, specialist_results, validator_results, specialist_risks, tension_text="", benefits_data=None, computed_severity=None):
+def build_coordinator_prompt(policy_text, specialist_results, validator_results, specialist_risks, tension_text="", benefits_data=None, computed_severity=None, institutional_results=None, peer_review=None):
     """Build coordinator prompt from specialist findings + demographic validation."""
 
     # Total population weight (dynamic agents are boosted-sampled so normalise)
@@ -1110,6 +1441,10 @@ Benefits identified by domain specialists (who gains from this policy):
 Net impact summary across 50 validators (positive = net gain, negative = net loss):
 {json.dumps({"by_tenure": benefits_data.get("net_by_tenure", {}), "by_income": benefits_data.get("net_by_income", {}), "net_positive_validators": benefits_data.get("summary", {}).get("net_positive_validators", 0), "net_negative_validators": benefits_data.get("summary", {}).get("net_negative_validators", 0)}, indent=2) if benefits_data else "Not available."}
 
+{build_institutional_summary_block(institutional_results) if institutional_results else ""}
+
+{build_peer_review_block(peer_review) if peer_review else ""}
+
 Before producing the report, apply this MECHANISM FILTER to every risk in the input:
 1. Write one sentence: "This policy [specific action] which causes [direct effect] which harms [group]."
 2. Count the causal steps between the policy action and the harm. If there are more than 2 steps, reject the risk.
@@ -1190,7 +1525,7 @@ Return exactly this JSON:
 }}"""
 
 
-async def run_coordinator(client, asst_id, policy_text, specialist_results, validator_results, specialist_risks, tension_text="", benefits_data=None):
+async def run_coordinator(client, asst_id, policy_text, specialist_results, validator_results, specialist_risks, tension_text="", benefits_data=None, institutional_results=None, peer_review=None):
     # Compute severity in Python first — these are hard constraints passed to the LLM
     total_pop_weight = sum(v.get("population_weight", 1.0) for v in validator_results) or 1.0
     risk_validations_for_scoring = []
@@ -1211,7 +1546,7 @@ async def run_coordinator(client, asst_id, policy_text, specialist_results, vali
     for i, (sev, score) in enumerate(zip(computed_severity['per_risk_severity'], computed_severity['scores'])):
         log(f"    Risk {i+1}: {sev} (score={score})")
 
-    prompt = build_coordinator_prompt(policy_text, specialist_results, validator_results, specialist_risks, tension_text, benefits_data, computed_severity)
+    prompt = build_coordinator_prompt(policy_text, specialist_results, validator_results, specialist_risks, tension_text, benefits_data, computed_severity, institutional_results=institutional_results, peer_review=peer_review)
     try:
         thread = await client.create_thread(asst_id)
         response = await client.add_message(
@@ -1266,7 +1601,7 @@ async def run_coordinator(client, asst_id, policy_text, specialist_results, vali
 
 # --- Main simulation loop ---
 
-async def run_simulation(policy_text, event_queue=None):
+async def run_simulation(policy_text, event_queue=None, enable_peer_review: bool = False):
     async def emit(event: dict):
         if event_queue is not None:
             await event_queue.put(event)
@@ -1274,7 +1609,7 @@ async def run_simulation(policy_text, event_queue=None):
     client = BackboardClient(api_key=BACKBOARD_API_KEY)
 
     log(f"\nCivica Risk Analysis: '{policy_text}'")
-    log(f"Specialists: {len(SPECIALISTS)} ({SPECIALIST_PROVIDER}/{SPECIALIST_MODEL})")
+    log(f"Specialists: 8 ({SPECIALIST_PROVIDER}/{SPECIALIST_MODEL}) — domain roster selected after classification")
     log(f"Validators: {len(AGENTS)} ({VALIDATOR_PROVIDER}/{VALIDATOR_MODEL})")
     log(f"Coordinator: {COORDINATOR_PROVIDER}/{COORDINATOR_MODEL}")
     log(f"Renters: {len(DEMOGRAPHIC_GROUPS['renters'])} | Owners: {len(DEMOGRAPHIC_GROUPS['owners'])}")
@@ -1295,18 +1630,43 @@ async def run_simulation(policy_text, event_queue=None):
     cities_summary = build_all_cities_summary()
 
     async def _create_specialist_threads():
-        return await asyncio.gather(*[client.create_thread(asst_id) for _ in SPECIALISTS])
+        return await asyncio.gather(*[client.create_thread(asst_id) for _ in range(8)])
 
     classify_task = asyncio.create_task(classify_policy(client, asst_id, policy_text))
     specialist_threads_task = asyncio.create_task(_create_specialist_threads())
     policy_classification, specialist_threads_pre = await asyncio.gather(classify_task, specialist_threads_task)
     log(f"Policy classified: {policy_classification['type']} | affects: {policy_classification['primary_affected']}")
+    domain = (policy_classification or {}).get("type", "other")
+
+    # Generate specialist roster + validator personas in parallel (LLM-driven, policy-specific)
+    log("Generating specialist roster and validator personas...")
+    await emit({"type": "status", "message": "Building policy-specific panel..."})
+    # More injected personas for policies where PUMF age distribution is structurally wrong
+    _policy_text_lower = policy_text.lower()
+    _persona_n = 25 if any(kw in _policy_text_lower for kw in {
+        "age verification", "age gating", "minor", "under 16", "under 18",
+        "parental consent", "screen time", "children", "youth",
+        "seniors", "elder", "long-term care", "pension",
+    }) else 15
+
+    active_specialists, generated_personas = await asyncio.gather(
+        generate_specialist_roster(client, asst_id, policy_text, policy_classification),
+        generate_validator_personas(client, asst_id, policy_text, policy_classification, n=_persona_n),
+    )
+    log(f"Specialist roster ({len(active_specialists)}): {[s['title'] for s in active_specialists]}")
+
+    # Inject generated personas into the PUMF panel
+    panel_agents = list(AGENTS)
+    if generated_personas:
+        from agent_generator import _inject_generated_personas
+        panel_agents = _inject_generated_personas(panel_agents, generated_personas)
+        log(f"Injected {len(generated_personas)} generated personas into validator panel")
 
     # ROUND 1: Domain specialist analysis (threads already created above)
-    log(f"\nRound 1: {len(SPECIALISTS)} domain specialists analyzing policy...")
-    await emit({"type": "status", "message": f"Round 1: {len(SPECIALISTS)} specialists analyzing policy..."})
+    log(f"\nRound 1: {len(active_specialists)} domain specialists analyzing policy...")
+    await emit({"type": "status", "message": f"Round 1: {len(active_specialists)} specialists analyzing policy..."})
     r1_start = time.time()
-    specialist_results = await run_specialists(client, asst_id, policy_text, policy_classification, pre_threads=specialist_threads_pre, cities_summary=cities_summary)
+    specialist_results = await run_specialists(client, asst_id, policy_text, policy_classification, pre_threads=specialist_threads_pre, cities_summary=cities_summary, specialists=active_specialists)
     r1_time = time.time() - r1_start
 
     # Summarize specialist findings
@@ -1324,14 +1684,14 @@ async def run_simulation(policy_text, event_queue=None):
     await emit({"type": "r1_complete", "specialists": specialist_results, "specialist_risks": specialist_risks})
 
     # ROUND 2: Demographic validation + Benefits analysis (parallel)
-    log(f"\nRound 2: {len(AGENTS)} demographic validators checking risks + benefits analysis...")
+    log(f"\nRound 2: {len(panel_agents)} demographic validators checking risks + benefits analysis...")
     _is_ai = policy_classification.get("type") in ("ai", "technology", "digital")
     _calibration_label = "AI sector exposure data" if _is_ai else "CHS 2022 microdata"
-    await emit({"type": "status", "message": f"Round 2: Calibrating {len(AGENTS)} validator personas against {_calibration_label}..."})
+    await emit({"type": "status", "message": f"Round 2: Calibrating {len(panel_agents)} validator personas against {_calibration_label}..."})
     r2_start = time.time()
     (validator_results, behavioral_profiles), benefit_results_raw = await asyncio.gather(
-        run_validators(client, asst_id, AGENTS, policy_text, validation_context, policy_classification, SURVEY_STATS),
-        run_benefits_analysis(client, asst_id, SPECIALISTS, policy_text, policy_classification),
+        run_validators(client, asst_id, panel_agents, policy_text, validation_context, policy_classification, SURVEY_STATS),
+        run_benefits_analysis(client, asst_id, active_specialists, policy_text, policy_classification),
     )
     r2_time = time.time() - r2_start
     total_benefits = sum(len(br.get("benefits", [])) for br in benefit_results_raw)
@@ -1390,6 +1750,31 @@ async def run_simulation(policy_text, event_queue=None):
         for t in tensions[:3]:
             log(f"    Risk {t['risk_index']} [{t['dimension']}]: {t['group_a']} {t['rate_a']:.0%} vs {t['group_b']} {t['rate_b']:.0%}")
 
+    # INSTITUTIONAL PANEL: Generate policy-specific actors + run validations
+    log("\nGenerating institutional actor panel...")
+    await emit({"type": "status", "message": "Building institutional actor panel..."})
+    institutional_personas = await generate_institutional_personas(
+        client, asst_id, policy_text, policy_classification,
+        llm_provider=COORDINATOR_PROVIDER, llm_model=COORDINATOR_MODEL,
+    )
+    log(f"  Institutional actors: {[p['label'] for p in institutional_personas]}")
+    institutional_results = await run_institutional_validation(
+        client, asst_id, policy_text, institutional_personas, specialist_risks,
+        llm_provider=VALIDATOR_PROVIDER, llm_model=VALIDATOR_MODEL,
+    )
+    log(f"  Institutional panel: {len(institutional_results)} actors validated")
+
+    # PEER REVIEW: Adversarial critique (optional)
+    peer_review = None
+    if enable_peer_review:
+        log("\nRunning adversarial peer review...")
+        await emit({"type": "status", "message": "Adversarial peer review running..."})
+        peer_review = await run_peer_review(
+            client, asst_id, policy_text, specialist_results, specialist_risks,
+            llm_provider=SPECIALIST_PROVIDER, llm_model=SPECIALIST_MODEL,
+        )
+        log(f"  Peer review: {len(peer_review.get('critiques', []))} critiques")
+
     # COORDINATOR: Synthesize risk report
     log("\nCoordinator synthesizing risk report...")
     await emit({"type": "status", "message": "Coordinator synthesizing risk report..."})
@@ -1397,6 +1782,7 @@ async def run_simulation(policy_text, event_queue=None):
     risk_report = await run_coordinator(
         client, asst_id, policy_text, specialist_results, validator_results,
         specialist_risks, tension_text, benefits_data,
+        institutional_results=institutional_results, peer_review=peer_review,
     )
     log(f"Coordinator complete in {time.time() - c_start:.1f}s")
 
@@ -1407,8 +1793,8 @@ async def run_simulation(policy_text, event_queue=None):
     output = {
         "policy": policy_text,
         "total_time_seconds": round(total_time, 2),
-        "specialists_total": len(SPECIALISTS),
-        "validators_total": len(AGENTS),
+        "specialists_total": len(active_specialists),
+        "validators_total": len(panel_agents),
         "models": {
             "specialist": f"{SPECIALIST_PROVIDER}/{SPECIALIST_MODEL}",
             "validator": f"{VALIDATOR_PROVIDER}/{VALIDATOR_MODEL}",
@@ -1421,6 +1807,8 @@ async def run_simulation(policy_text, event_queue=None):
         "risk_report": risk_report,
         "demographic_tensions": tensions,
         "benefits": benefits_data,
+        "institutional_panel": institutional_results,
+        "peer_review": peer_review,
     }
 
     with open("cache/round_1_specialists.json", "w") as f:
@@ -1428,15 +1816,25 @@ async def run_simulation(policy_text, event_queue=None):
     with open("cache/round_2_validators.json", "w") as f:
         json.dump(validator_results, f, indent=2)
 
-    # Confidence score
-    confidence = calculate_confidence(
-        policy_classification,
-        CITY_PROFILES,
-        specialist_results,
-        validator_results,
+    # Confidence score + fiscal scorecard (parallel)
+    confidence, fiscal_scorecard = await asyncio.gather(
+        asyncio.to_thread(
+            calculate_confidence,
+            policy_classification,
+            CITY_PROFILES,
+            specialist_results,
+            validator_results,
+            domain=domain,
+        ),
+        run_fiscal_scorecard(
+            client, asst_id, policy_text, specialist_results,
+            llm_provider=COORDINATOR_PROVIDER, llm_model=COORDINATOR_MODEL,
+        ),
     )
     output["confidence"] = confidence
+    output["fiscal_scorecard"] = fiscal_scorecard
     output["policy_classification"] = policy_classification
+    output["panel_version_id"] = _compute_panel_version(panel_agents)
 
     # Seal for forward validation
     seal_id = seal_simulation(policy_text, output)
@@ -1447,7 +1845,7 @@ async def run_simulation(policy_text, event_queue=None):
         json.dump(output, f, indent=2)
 
     log(f"\nConfidence: {confidence['score']}/{confidence['out_of']} — {confidence['reason']}")
-    log(f"Seal ID: {seal_id}")
+    log(f"Seal ID: {seal_id} | Panel: {output['panel_version_id']}")
 
     await emit({"type": "done", "data": output})
 

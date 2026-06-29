@@ -10,10 +10,30 @@ Endpoints used:
   POST /threads/{thread_id}/messages
 """
 
+import asyncio
 import httpx
 
 
 BASE_URL = "https://app.backboard.io/api"
+
+# Transient errors worth retrying (DNS blip, connection reset, timeout)
+_RETRYABLE = (
+    httpx.ConnectError,
+    httpx.ConnectTimeout,
+    httpx.ReadTimeout,
+    httpx.RemoteProtocolError,
+)
+
+async def _with_retry(coro_fn, retries: int = 3, delay: float = 1.5):
+    last_exc = None
+    for attempt in range(retries):
+        try:
+            return await coro_fn()
+        except _RETRYABLE as e:
+            last_exc = e
+            if attempt < retries - 1:
+                await asyncio.sleep(delay * (attempt + 1))
+    raise last_exc
 
 
 class AssistantResponse:
@@ -47,20 +67,24 @@ class BackboardClient:
         )
 
     async def create_assistant(self, name: str, system_prompt: str) -> AssistantResponse:
-        resp = await self._client.post(
-            "/assistants",
-            json={"name": name, "system_prompt": system_prompt},
-        )
-        resp.raise_for_status()
-        return AssistantResponse(resp.json())
+        async def _call():
+            resp = await self._client.post(
+                "/assistants",
+                json={"name": name, "system_prompt": system_prompt},
+            )
+            resp.raise_for_status()
+            return AssistantResponse(resp.json())
+        return await _with_retry(_call)
 
     async def create_thread(self, assistant_id: str) -> ThreadResponse:
-        resp = await self._client.post(
-            f"/assistants/{assistant_id}/threads",
-            json={},
-        )
-        resp.raise_for_status()
-        return ThreadResponse(resp.json())
+        async def _call():
+            resp = await self._client.post(
+                f"/assistants/{assistant_id}/threads",
+                json={},
+            )
+            resp.raise_for_status()
+            return ThreadResponse(resp.json())
+        return await _with_retry(_call)
 
     async def add_message(
         self,
@@ -70,17 +94,19 @@ class BackboardClient:
         model_name: str = "gpt-4o-mini",
         stream: bool = False,
     ) -> MessageResponse:
-        resp = await self._client.post(
-            f"/threads/{thread_id}/messages",
-            json={
-                "content": content,
-                "llm_provider": llm_provider,
-                "model_name": model_name,
-                "stream": stream,
-            },
-        )
-        resp.raise_for_status()
-        return MessageResponse(resp.json())
+        async def _call():
+            resp = await self._client.post(
+                f"/threads/{thread_id}/messages",
+                json={
+                    "content": content,
+                    "llm_provider": llm_provider,
+                    "model_name": model_name,
+                    "stream": stream,
+                },
+            )
+            resp.raise_for_status()
+            return MessageResponse(resp.json())
+        return await _with_retry(_call)
 
     async def aclose(self):
         await self._client.aclose()

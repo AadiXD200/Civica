@@ -168,6 +168,147 @@ def _growth_rate(df, geo_str, filters=None):
     return round((latest - previous) / previous * 100, 2)
 
 
+# Sector/industry labels in Table 14-10-0023-01 mapped to our categories
+SECTOR_MAP = {
+    "public_sector": [
+        "Public administration",
+        "Educational services",
+        "Health care and social assistance",
+    ],
+    "manufacturing": ["Manufacturing"],
+    "construction": ["Construction"],
+    "healthcare": ["Health care and social assistance"],
+    "tech": ["Information and cultural industries", "Professional, scientific and technical services"],
+    "retail": ["Retail trade", "Wholesale trade"],
+}
+
+# GEO strings for Table 14-10-0023-01 (LFS by industry by CMA)
+GEO_MAP_LFS_INDUSTRY = {
+    "Toronto": "Toronto, Ontario",
+    "Vancouver": "Vancouver, British Columbia",
+    "Montreal": "Montréal, Quebec",
+    "Calgary": "Calgary, Alberta",
+    "Edmonton": "Edmonton, Alberta",
+    "Ottawa": "Ottawa-Gatineau, Ontario part, Ontario",
+    "Winnipeg": "Winnipeg, Manitoba",
+    "Hamilton": "Hamilton, Ontario",
+    "Kitchener": "Kitchener-Cambridge-Waterloo, Ontario",
+    "Halifax": "Halifax, Nova Scotia",
+    "Victoria": "Victoria, British Columbia",
+    "Saskatoon": "Saskatoon, Saskatchewan",
+    "Regina": "Regina, Saskatchewan",
+    "Kelowna": "Kelowna, British Columbia",
+    "Sudbury": "Greater Sudbury, Ontario",
+}
+
+
+def _infer_transit_mode_share(city: str, profile: dict):
+    """
+    Inject transit_mode_share_pct into profile.
+    First tries to load from transit_stats.json (NHS 2021 derived).
+    Falls back to a density-based heuristic using population if JSON not found.
+    Mutates profile in place.
+    """
+    transit_json = os.path.join("data", "transit_stats.json")
+    if os.path.exists(transit_json):
+        try:
+            with open(transit_json) as f:
+                transit_data = json.load(f)
+            city_transit = transit_data.get("by_city", {}).get(city)
+            if city_transit:
+                profile["transit_mode_share_pct"] = city_transit.get("transit_mode_share_pct")
+                profile["avg_commute_min"] = city_transit.get("avg_commute_min")
+                return
+        except Exception as e:
+            print(f"  [WARN] Could not load transit_stats.json: {e}")
+
+    # Density-based heuristic fallback
+    pop = profile.get("population", 0)
+    if pop and pop > 1_000_000:
+        profile["transit_mode_share_pct"] = 25.0
+    elif pop and pop > 500_000:
+        profile["transit_mode_share_pct"] = 15.0
+    elif pop and pop > 200_000:
+        profile["transit_mode_share_pct"] = 10.0
+    else:
+        profile["transit_mode_share_pct"] = 5.0
+    profile["transit_mode_share_source"] = "estimated_density_heuristic"
+
+
+def fetch_sector_employment(city: str, lfs_industry_df) -> dict:
+    """
+    Extract sector employment shares from Table 14-10-0023-01 for a given city.
+    Returns a dict of sector_pct values, or an empty dict if data is unavailable.
+    """
+    geo_str = GEO_MAP_LFS_INDUSTRY.get(city)
+    if geo_str is None or lfs_industry_df is None:
+        return {}
+
+    try:
+        city_df = lfs_industry_df[
+            (lfs_industry_df["GEO"] == geo_str)
+            & (lfs_industry_df["Statistics"] == "Estimate")
+            & (lfs_industry_df["Data type"] == "Seasonally adjusted")
+        ].dropna(subset=["VALUE"])
+
+        if city_df.empty:
+            return {}
+
+        # Get the latest reference date
+        latest_date = city_df["REF_DATE"].max()
+        latest_df = city_df[city_df["REF_DATE"] == latest_date]
+
+        # Build industry -> employment count map
+        industry_totals = {}
+        for _, row in latest_df.iterrows():
+            industry = row.get("North American Industry Classification System (NAICS)")
+            if industry and pd.notna(row["VALUE"]):
+                industry_totals[industry] = float(row["VALUE"])
+
+        # Total employment (all industries)
+        total_key = "Total employed, all industries"
+        total = industry_totals.get(total_key)
+        if not total or total == 0:
+            # fallback: sum all non-total rows
+            total = sum(v for k, v in industry_totals.items() if "Total" not in k)
+        if not total or total == 0:
+            return {}
+
+        def share(industries):
+            return round(sum(industry_totals.get(i, 0) for i in industries) / total * 100, 1)
+
+        # Healthcare is double-counted in public_sector above — compute separately
+        healthcare_pct = share(["Health care and social assistance"])
+        public_admin_edu = share(["Public administration", "Educational services"])
+        public_sector_pct = round(public_admin_edu + healthcare_pct, 1)
+
+        manufacturing_pct = share(["Manufacturing"])
+        construction_pct = share(["Construction"])
+        tech_pct = share([
+            "Information and cultural industries",
+            "Professional, scientific and technical services",
+        ])
+        retail_pct = share(["Retail trade", "Wholesale trade"])
+
+        accounted = public_sector_pct + manufacturing_pct + construction_pct + tech_pct + retail_pct
+        other_pct = round(max(0, 100 - accounted), 1)
+
+        return {
+            "public_sector_pct": public_sector_pct,
+            "manufacturing_pct": manufacturing_pct,
+            "construction_pct": construction_pct,
+            "healthcare_pct": healthcare_pct,
+            "tech_pct": tech_pct,
+            "retail_pct": retail_pct,
+            "other_pct": other_pct,
+            "sector_data_source": "StatsCan LFS Table 14-10-0023-01",
+        }
+
+    except Exception as e:
+        print(f"  [WARN] Sector employment extraction failed for {city}: {e}")
+        return {}
+
+
 def fetch_from_statscan():
     """Fetch all data from StatsCan APIs and return city profiles dict."""
     print("Fetching data from Statistics Canada...", flush=True)
@@ -214,6 +355,13 @@ def fetch_from_statscan():
     except Exception as e:
         print(f"  [WARN] Income table failed: {e}")
         income_df = None
+
+    # 7. LFS employment by industry by CMA (Table 14-10-0023-01)
+    try:
+        lfs_industry_df = _download_csv("14100023")
+    except Exception as e:
+        print(f"  [WARN] LFS industry table failed: {e}")
+        lfs_industry_df = None
 
     # Build profiles for CMA cities
     for city, geo_cmhc in GEO_MAP_CMHC.items():
@@ -294,6 +442,17 @@ def fetch_from_statscan():
         income = profile.get("median_household_income")
         if rent and income and income > 0:
             profile["shelter_cost_to_income_ratio"] = round((rent * 12) / income, 3)
+
+        # Sector employment shares from LFS industry table
+        sector_data = fetch_sector_employment(city, lfs_industry_df)
+        if sector_data:
+            profile.update(sector_data)
+        else:
+            print(f"  [WARN] No sector employment data for {city}, skipping.")
+
+        # Transit mode share: use Table 23-10-0357-01 if available, else infer from density
+        # Table 23-10-0357-01 is a commuting characteristics table — fall back to transit_stats.json
+        _infer_transit_mode_share(city, profile)
 
         profiles[city] = profile
 

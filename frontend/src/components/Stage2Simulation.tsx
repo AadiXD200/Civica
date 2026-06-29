@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import type { AnimationEntry } from '../types';
 import './Stage2.css';
@@ -19,6 +19,41 @@ export const Stage2Simulation: React.FC<Props> = ({ entries, onComplete, roundNu
   const [animationDone, setAnimationDone] = useState(false);
   const logFeedRef = useRef<HTMLDivElement>(null);
   const completedRef = useRef(false);
+
+  // Resizable left panel — default 35% of window width
+  const [leftWidth, setLeftWidth] = useState(0);
+  const isDragging = useRef(false);
+  const dragStartX = useRef(0);
+  const dragStartWidth = useRef(0);
+
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    isDragging.current = true;
+    dragStartX.current = e.clientX;
+    dragStartWidth.current = leftWidth;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  }, [leftWidth]);
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isDragging.current) return;
+      const delta = e.clientX - dragStartX.current;
+      const next = Math.max(200, Math.min(window.innerWidth * 0.7, dragStartWidth.current + delta));
+      setLeftWidth(Math.round(next));
+    };
+    const onMouseUp = () => {
+      if (!isDragging.current) return;
+      isDragging.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+  }, []);
 
   // Reset when entries change
   useEffect(() => {
@@ -131,10 +166,25 @@ export const Stage2Simulation: React.FC<Props> = ({ entries, onComplete, roundNu
       </div>
 
       <div className="chamber-layout">
+        <div className="chamber-left" style={{ width: leftWidth }}>
         <div className="agent-grid">
           {entries.filter(Boolean).map((entry, i) => {
             const isActive = i < activeEntries.length;
             const signal = isActive ? getSignalColor(entry.signal) : 'transparent';
+            // For validators: sublabel is "renter / 25-34" — extract tenure initial + age
+            // For specialists: sublabel is a category — show label directly
+            const isValidator = entry.sublabel.includes('/');
+            let topLine: string;
+            let bottomLine: string;
+            if (isValidator) {
+              const [tenure, age] = entry.sublabel.split(' / ');
+              topLine = tenure === 'renter' ? 'RNT' : 'OWN';
+              bottomLine = age?.replace('-', '–') ?? entry.label.substring(0, 3).toUpperCase();
+            } else {
+              // specialist — show 3-char city/label + category abbreviated
+              topLine = entry.label.substring(0, 3).toUpperCase();
+              bottomLine = entry.sublabel.substring(0, 3).toUpperCase();
+            }
             return (
               <div
                 key={entry.id}
@@ -143,7 +193,10 @@ export const Stage2Simulation: React.FC<Props> = ({ entries, onComplete, roundNu
               >
                 {isActive && (
                   <>
-                    <div className="agent-geo">{entry.label.substring(0, 3).toUpperCase()}</div>
+                    <div className="agent-geo">
+                      <span className="agent-line1">{topLine}</span>
+                      <span className="agent-line2">{bottomLine}</span>
+                    </div>
                     <div className="agent-signal" style={{ backgroundColor: signal }}></div>
                   </>
                 )}
@@ -151,22 +204,32 @@ export const Stage2Simulation: React.FC<Props> = ({ entries, onComplete, roundNu
             );
           })}
         </div>
+        </div>
 
+        <div
+          className={`chamber-resizer${isDragging.current ? ' dragging' : ''}`}
+          onMouseDown={onMouseDown}
+        />
+
+        <div className="chamber-right">
         <div className="live-log-container">
           <div className="log-header">LIVE INTELLIGENCE FEED</div>
           <div className="log-feed" ref={logFeedRef}>
             {activeEntries.filter(Boolean).map(entry => (
-              <div key={entry.id} className="log-entry">
-                <span className="log-id">[{entry.id.toString().padStart(2, '0')}]</span>
-                <span className="log-geo">{entry.label.toUpperCase()}</span>
-                <span className="log-demo">{entry.sublabel}</span>
-                <span className="log-sentiment" style={{ color: getSignalColor(entry.signal) }}>
-                  {entry.signal === 'negative' ? 'HIGH' : entry.signal === 'mixed' ? 'MED' : 'LOW'}
-                </span>
-                <span className="log-concern">"{entry.concern}"</span>
+              <div key={entry.id} className="log-entry-scroll">
+                <div className="log-entry">
+                  <span className="log-id">[{entry.id.toString().padStart(2, '0')}]</span>
+                  <span className="log-geo">{entry.label.toUpperCase()}</span>
+                  <span className="log-demo">{entry.sublabel}</span>
+                  <span className="log-sentiment" style={{ color: getSignalColor(entry.signal) }}>
+                    {entry.signal === 'negative' ? 'HIGH' : entry.signal === 'mixed' ? 'MED' : 'LOW'}
+                  </span>
+                  <span className="log-concern">"{entry.concern}"</span>
+                </div>
               </div>
             ))}
           </div>
+        </div>
         </div>
       </div>
     </motion.div>

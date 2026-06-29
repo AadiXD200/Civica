@@ -4,23 +4,58 @@ import { AnimatePresence } from 'framer-motion';
 import { Stage1Input } from './components/Stage1Input';
 import { Stage2Simulation } from './components/Stage2Simulation';
 import { Stage3Findings } from './components/Stage3Findings';
-import type { AnimationEntry, SimulationEvent, SimulationOutput, SpecialistResult, ValidatorResult } from './types';
+import type { AnimationEntry, PolicyIntake, SimulationEvent, SimulationOutput, SpecialistResult, ValidatorResult } from './types';
 import './App.css';
 
-const API_BASE = 'https://web-production-12c10.up.railway.app';
+const API_BASE = import.meta.env.VITE_API_BASE ?? 'https://web-production-12c10.up.railway.app';
 
 type Stage = 'INPUT' | 'SIMULATION_R1' | 'SIMULATION_R2' | 'FINDINGS';
 
-const SPECIALIST_LABELS: Record<string, string> = {
-  labor_economist: 'Labor Economist',
-  urban_planner: 'Urban Planner',
-  fiscal_analyst: 'Fiscal Analyst',
-  housing_economist: 'Housing Economist',
-  social_equity_researcher: 'Equity Researcher',
-  regional_development_analyst: 'Regional Analyst',
-  construction_industry_analyst: 'Construction Analyst',
-  demographic_economist: 'Demographic Economist',
-};
+// Convert any specialist id to a short readable label (works for dynamic ids too)
+function formatSpecialistLabel(id: string): string {
+  const OVERRIDES: Record<string, string> = {
+    labor_economist: 'Labor Econ',
+    urban_planner: 'Urban Planner',
+    fiscal_analyst: 'Fiscal Analyst',
+    housing_economist: 'Housing Econ',
+    social_equity_researcher: 'Equity Researcher',
+    regional_development_analyst: 'Regional Analyst',
+    construction_industry_analyst: 'Construction',
+    demographic_economist: 'Demog. Econ',
+    policy_critic: 'Policy Critic',
+    health_economist: 'Health Econ',
+    pharmacist_analyst: 'Pharma Analyst',
+    provincial_relations: 'Fed-Prov Expert',
+    labour_market_analyst: 'Labour Market',
+    insurance_industry_analyst: 'Insurance',
+    climate_economist: 'Climate Econ',
+    fossil_fuel_analyst: 'Fossil Fuels',
+    clean_tech_analyst: 'Clean Tech',
+    immigration_economist: 'Immigration Econ',
+    settlement_services_analyst: 'Settlement Svcs',
+    education_economist: 'Education Econ',
+    technology_analyst: 'EdTech',
+    transit_economist: 'Transit Econ',
+    climate_analyst: 'Climate Analyst',
+    ai_economist: 'AI Economist',
+    technology_policy_analyst: 'Tech Policy',
+    privacy_analyst: 'Privacy',
+    innovation_analyst: 'Innovation',
+    criminal_justice_economist: 'Criminal Justice',
+    mental_health_analyst: 'Mental Health',
+    tax_economist: 'Tax Econ',
+    capital_markets_analyst: 'Capital Markets',
+    union_relations_analyst: 'Labour Relations',
+    small_business_analyst: 'Small Business',
+    automation_analyst: 'Automation',
+    data_broker: 'Data Rights',
+    federal_procurement: 'Fed Procurement',
+  };
+  if (OVERRIDES[id]) return OVERRIDES[id];
+  // Generic: split on underscore, title-case each word, abbreviate to 2 words max
+  const words = id.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1));
+  return words.slice(0, 2).join(' ');
+}
 
 function specialistsToEntries(specialists: SpecialistResult[]): AnimationEntry[] {
   return specialists.filter(Boolean).map((s, i) => {
@@ -30,7 +65,7 @@ function specialistsToEntries(specialists: SpecialistResult[]): AnimationEntry[]
       : 'mixed';
     return {
       id: i + 1,
-      label: SPECIALIST_LABELS[s.specialist] || s.specialist,
+      label: formatSpecialistLabel(s.specialist),
       sublabel: topRisk?.category ?? 'analysis',
       concern: topRisk?.risk?.substring(0, 90) ?? 'analysis complete',
       signal,
@@ -76,7 +111,7 @@ function App() {
 
   const policyRef = useRef('');
 
-  const handlePolicySubmit = async (policy: string) => {
+  const handlePolicySubmit = async (policy: string, intake: PolicyIntake = {}) => {
     policyRef.current = policy;
     setLoading(true);
     setError('');
@@ -85,11 +120,20 @@ function App() {
     setDoneReady(false);
     setSimulationData(null);
 
+    // Strip undefined values so we don't send empty intake fields
+    const cleanIntake = Object.fromEntries(
+      Object.entries(intake).filter(([, v]) => v !== undefined && v !== '')
+    );
+
     try {
       const response = await fetch(`${API_BASE}/simulate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ policy }),
+        body: JSON.stringify({
+          policy,
+          enable_peer_review: intake.enable_peer_review ?? false,
+          intake: Object.keys(cleanIntake).length ? cleanIntake : undefined,
+        }),
       });
 
       if (response.status === 422) {

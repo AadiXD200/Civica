@@ -35,6 +35,7 @@ def seal_simulation(policy_text: str, full_output: dict) -> str:
             "tension_detection": tensions_count > 0,
             "tensions_detected": tensions_count,
             "pumf_microdata": "CHS 2022 PUMF — PSTIR_GR 3-code recoding applied",
+            "panel_version_id": full_output.get("panel_version_id", "unknown"),
         }
     }
 

@@ -1,0 +1,103 @@
+{
+  "national": {
+    "without_family_doctor_pct": 14.5,
+    "rural_without_doctor_pct": 22.3,
+    "median_er_wait_hours": 3.2,
+    "avg_er_wait_hours": 4.7,
+    "physicians_per_1000": 2.8,
+    "nurses_per_1000": 10.4,
+    "long_term_care_wait_days_median": 146,
+    "mental_health_unmet_needs_pct": 22.4,
+    "source": "CIHI Health System Performance 2023; StatsCan Health Reports 2022"
+  },
+  "by_province": {
+    "ON": {
+      "without_family_doctor_pct": 15.8,
+      "median_er_wait_hours": 3.6,
+      "physicians_per_1000": 2.9,
+      "public_health_spending_per_capita": 3842,
+      "ltc_wait_days_median": 183,
+      "source": "CIHI 2023; OHRS 2022"
+    },
+    "QC": {
+      "without_family_doctor_pct": 25.7,
+      "median_er_wait_hours": 4.2,
+      "physicians_per_1000": 2.6,
+      "public_health_spending_per_capita": 3961,
+      "ltc_wait_days_median": 210,
+      "notes": "QC GMF model means fewer attached to single doctor but access via family medicine groups"
+    },
+    "BC": {
+      "without_family_doctor_pct": 14.1,
+      "median_er_wait_hours": 3.1,
+      "physicians_per_1000": 3.0,
+      "public_health_spending_per_capita": 4021,
+      "ltc_wait_days_median": 130,
+      "source": "CIHI 2023; BC MOH 2022"
+    },
+    "AB": {
+      "without_family_doctor_pct": 13.0,
+      "median_er_wait_hours": 2.9,
+      "physicians_per_1000": 2.9,
+      "public_health_spending_per_capita": 4103,
+      "ltc_wait_days_median": 110,
+      "source": "CIHI 2023; AHS 2022"
+    },
+    "MB": {
+      "without_family_doctor_pct": 12.2,
+      "median_er_wait_hours": 3.4,
+      "physicians_per_1000": 2.6,
+      "public_health_spending_per_capita": 3720,
+      "ltc_wait_days_median": 160,
+      "source": "CIHI 2023"
+    },
+    "SK": {
+      "without_family_doctor_pct": 14.9,
+      "median_er_wait_hours": 3.0,
+      "physicians_per_1000": 2.4,
+      "public_health_spending_per_capita": 3680,
+      "ltc_wait_days_median": 98,
+      "notes": "physician density estimated; SK Health Authority reporting 2022"
+    },
+    "NS": {
+      "without_family_doctor_pct": 12.5,
+      "median_er_wait_hours": 3.3,
+      "physicians_per_1000": 2.5,
+      "public_health_spending_per_capita": 3550,
+      "ltc_wait_days_median": 138,
+      "source": "CIHI 2023; NSHA 2022"
+    },
+    "NB": {
+      "without_family_doctor_pct": 20.1,
+      "median_er_wait_hours": 3.8,
+      "physicians_per_1000": 2.2,
+      "public_health_spending_per_capita": 3430,
+      "ltc_wait_days_median": 175,
+      "source": "CIHI 2023; Horizon/Vitalite 2022"
+    },
+    "PE": {
+      "without_family_doctor_pct": 16.8,
+      "median_er_wait_hours": 2.8,
+      "physicians_per_1000": 2.3,
+      "public_health_spending_per_capita": 3380,
+      "ltc_wait_days_median": 120,
+      "notes": "physician density and LTC estimated; CIHI 2023"
+    },
+    "NL": {
+      "without_family_doctor_pct": 19.4,
+      "median_er_wait_hours": 3.5,
+      "physicians_per_1000": 2.1,
+      "public_health_spending_per_capita": 3710,
+      "ltc_wait_days_median": 165,
+      "source": "CIHI 2023; Eastern Health 2022"
+    }
+  },
+  "mental_health": {
+    "reported_excellent_mental_health_pct": 65.8,
+    "severe_mental_illness_pct": 2.8,
+    "addictions_unmet_need_pct": 6.4,
+    "youth_mental_health_crisis_pct": 18.2,
+    "source": "StatsCan CCHS 2020-2021; MHCC 2022",
+    "notes": "youth figure is pct reporting high distress 15-24 age group"
+  }
+}

@@ -146,7 +146,7 @@ def compute_risk_confirmations(
         income_group = _income_group(vr.get("income_bracket", "medium"))
         geo_group = _classify_geography(vr.get("city", ""))
         age_group = _age_group(vr.get("age_bracket", "35-49"))
-        imm_group = _immigration_group(vr.get("immigration_status", "canadian_born"))
+        imm_group = _immigration_group(vr.get("immigration_status", "born_here"))
 
         for val in vr.get("validations", []):
             ri = val.get("risk_index")
@@ -202,30 +202,43 @@ _AWARENESS_CATEGORIES = {"fiscal", "infrastructure", "timeline", "geographic"}
 _VULNERABILITY_CATEGORIES = {"affordability", "displacement", "equity", "employment"}
 
 
-def _interpret(dimension: str, group_a: str, rate_a: float, group_b: str, rate_b: float, risk_category: str = "") -> str:
+_HOUSING_KEYWORDS = frozenset(["rent", "renter", "tenant", "housing", "displacement", "eviction", "landlord", "mortgage", "vacancy"])
+
+
+def _is_housing_risk(risk_text: str) -> bool:
+    t = risk_text.lower()
+    return any(kw in t for kw in _HOUSING_KEYWORDS)
+
+
+def _interpret(dimension: str, group_a: str, rate_a: float, group_b: str, rate_b: float, risk_category: str = "", risk_text: str = "") -> str:
     """Returns an interpretation sentence for a detected tension."""
     cat = risk_category.lower()
+    housing = _is_housing_risk(risk_text)
 
     if dimension == "tenure":
         if group_a == "renter":
-            return "Renters confirm this risk at much higher rates, suggesting the burden falls asymmetrically on non-owners."
-        return "Owners confirm this risk at much higher rates, suggesting the primary exposure is to property-holding households — likely through asset value or tax effects."
+            if housing or cat == "displacement":
+                return "Renters confirm this risk at much higher rates, suggesting the burden falls asymmetrically on non-owners."
+            return "Renters confirm this risk at much higher rates, likely reflecting lower income buffers, greater reliance on public services, and less ability to absorb cost pass-throughs."
+        return "Owners confirm this risk at much higher rates, suggesting the primary exposure is to property-holding households — likely through asset value, tax, or employer-side effects."
 
     if dimension == "income":
         if group_a == "low":
             return "Lower-income households confirm this risk at much higher rates, indicating a regressive distributional impact."
-        # group_a == "high" or "medium" — interpret based on risk category
+        # group_a is "high" or "medium" — use the correct label
+        income_label = "High-income" if group_a == "high" else "Middle-income"
+        income_label_lc = income_label.lower()
         if cat in _AWARENESS_CATEGORIES:
             return (
-                f"Higher-income households confirm this {cat} risk at higher rates, likely reflecting "
-                "greater awareness of fiscal or infrastructure effects rather than personal financial vulnerability."
+                f"{income_label} households confirm this {cat} risk at higher rates than low-income households, likely reflecting "
+                "greater awareness of fiscal or supply-chain effects rather than direct personal financial vulnerability."
             )
         if cat in _VULNERABILITY_CATEGORIES:
             return (
-                f"Higher-income households confirming this {cat} risk at higher rates is unexpected — "
-                "it may indicate broad market-wide effects that reach beyond the most vulnerable."
+                f"{income_label} households confirming this {cat} risk at higher rates is unexpected — "
+                "it may indicate broad market-wide effects that reach beyond the most financially exposed."
             )
-        return "Higher-income households confirm this risk at higher rates; interpret with caution — this may reflect awareness rather than personal exposure."
+        return f"{income_label} households confirm this risk at higher rates; interpret with caution — this may reflect sectoral exposure or awareness rather than personal financial vulnerability."
 
     if dimension == "geography":
         if group_a == "urban":
@@ -234,7 +247,9 @@ def _interpret(dimension: str, group_a: str, rate_a: float, group_b: str, rate_b
 
     if dimension == "age":
         if group_a == "young":
-            return "Younger validators confirm this risk at higher rates, suggesting near-term housing market entrants bear disproportionate exposure."
+            if housing or cat == "displacement":
+                return "Younger validators confirm this risk at higher rates, suggesting near-term housing market entrants bear disproportionate exposure."
+            return "Younger validators confirm this risk at higher rates, likely reflecting less job security, lower savings, and greater sensitivity to labour market or cost-of-living shocks."
         return "Older validators confirm this risk at higher rates, suggesting the burden falls on established households or those on fixed incomes."
 
     if dimension == "immigration":
@@ -307,7 +322,7 @@ def detect_tensions(
                     rate_a, rate_b = rate_b, rate_a
                     gap = -gap
 
-                interpretation = _interpret(dimension, group_a, rate_a, group_b, rate_b, risk_category)
+                interpretation = _interpret(dimension, group_a, rate_a, group_b, rate_b, risk_category, risk_text=risk_title)
 
                 tensions.append({
                     "risk_index": ri,
